@@ -605,14 +605,30 @@
             }
         }
         
+        /**
+         * Masque ou affiche le panneau de configuration en modifiant la propriété display.
+         */
         function toggleConfig() {
             const configPanel = document.getElementById('config-panel');
-            const isHidden = configPanel.style.marginLeft === '-400px';
-
-            if (isHidden) {
-                configPanel.style.marginLeft = '0'; 
+            const calendarDisplay = document.querySelector('.calendar-display');
+            
+            // Vérifie si le panneau est actuellement visible (display n'est pas 'none')
+            const isVisible = configPanel.style.display !== 'none';
+        
+            if (isVisible) {
+                // Masquer le panneau
+                configPanel.style.display = 'none';
+                
+                // Optionnel : Permettre au calendrier d'occuper toute la largeur
+                // On supprime la contrainte de largeur pour le calendrier
+                calendarDisplay.style.maxWidth = '100%'; 
+                
             } else {
-                configPanel.style.marginLeft = '-400px'; 
+                // Afficher le panneau
+                configPanel.style.display = 'block';
+                
+                // Rétablir la largeur maximale par défaut (pour la disposition à deux colonnes)
+                calendarDisplay.style.maxWidth = '950px'; // Réajuster à la taille souhaitée si nécessaire
             }
         }
 
