@@ -354,6 +354,12 @@
                     <input type="color" id="colorVB" value="#a8d5f7" onchange="changeColor()">
                 </div>
             </div>
+            <div class="config-header">
+                <h3>Sauvegarde et Restauration (CSV)</h3>
+                <button onclick="exportConfig()" style="background-color: #2980b9; color: white; margin-right: 10px;">Exporter la Configuration (CSV)</button>
+                <input type="file" id="importFile" accept=".csv" style="display: none;" onchange="importConfig()">
+                <button onclick="document.getElementById('importFile').click()" style="background-color: #16a085; color: white;">Importer la Configuration (CSV)</button>
+            </div>
         </div>
 
         <div class="calendar-display">
@@ -478,7 +484,134 @@
 
             return null;
         }
+        // --- FONCTIONS D'IMPORT/EXPORT CSV ---
+
+/**
+ * 1. Génère une chaîne CSV contenant toutes les données de configuration.
+ */
+function generateCsvData() {
+    const data = {
+        nameA: document.getElementById('nameA').value,
+        nameB: document.getElementById('nameB').value,
+        refDate: document.getElementById('refDate').value,
+        weeksA: document.getElementById('weeksA').value,
+        weeksB: document.getElementById('weeksB').value,
+        startParent: document.getElementById('startParent').value,
+        colorA: document.getElementById('colorA').value,
+        colorB: document.getElementById('colorB').value,
+        colorVA: document.getElementById('colorVA').value,
+        colorVB: document.getElementById('colorVB').value,
+        schoolYearStart: document.getElementById('schoolYearStart').value,
         
+        // Sérialisation des vacances: [start|end|parent]
+        holidays: holidays.map(h => 
+            `${h.start.toISOString().split('T')[0]}|${h.end.toISOString().split('T')[0]}|${h.firstHalfParent}`
+        ).join(';')
+    };
+
+    // Création de l'en-tête et des valeurs pour le CSV
+    const headers = Object.keys(data).join(',');
+    const values = Object.values(data).map(v => `"${v}"`).join(','); // Encapsule les valeurs dans des guillemets
+    
+    return headers + '\n' + values;
+}
+
+/**
+ * 2. Exporte les données de configuration dans un fichier CSV téléchargeable.
+ */
+function exportConfig() {
+    const csvContent = generateCsvData();
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    
+    // Crée un nom de fichier unique basé sur la date
+    const date = new Date().toISOString().split('T')[0];
+    link.setAttribute('href', URL.createObjectURL(blob));
+    link.setAttribute('download', `calendrier_garde_config_${date}.csv`);
+    
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+}
+
+/**
+ * 3. Importe la configuration à partir d'un fichier CSV sélectionné par l'utilisateur.
+ */
+function importConfig() {
+    const fileInput = document.getElementById('importFile');
+    const file = fileInput.files[0];
+    
+    if (!file) {
+        return;
+    }
+    
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        try {
+            const lines = e.target.result.trim().split('\n');
+            if (lines.length < 2) throw new Error("Format de fichier invalide.");
+
+            const headers = lines[0].split(',');
+            const values = lines[1].match(/"([^"]*)"/g).map(v => v.replace(/"/g, '')); // Extraction des valeurs entre guillemets
+            
+            if (headers.length !== values.length) throw new Error("Incohérence entre les en-têtes et les valeurs.");
+
+            const config = {};
+            headers.forEach((h, i) => {
+                config[h.trim()] = values[i];
+            });
+            
+            // 4. Application des valeurs dans l'interface
+            document.getElementById('nameA').value = config.nameA;
+            document.getElementById('nameB').value = config.nameB;
+            document.getElementById('refDate').value = config.refDate;
+            document.getElementById('weeksA').value = config.weeksA;
+            document.getElementById('weeksB').value = config.weeksB;
+            document.getElementById('startParent').value = config.startParent;
+            document.getElementById('colorA').value = config.colorA;
+            document.getElementById('colorB').value = config.colorB;
+            document.getElementById('colorVA').value = config.colorVA;
+            document.getElementById('colorVB').value = config.colorVB;
+            document.getElementById('schoolYearStart').value = config.schoolYearStart;
+            
+            // 5. Réhydratation des vacances
+            holidays = [];
+            if (config.holidays) {
+                const holidayStrings = config.holidays.split(';');
+                holidayStrings.forEach((str, index) => {
+                    if (str) {
+                         const parts = str.split('|');
+                         if (parts.length === 3) {
+                             const startDate = new Date(parts[0] + 'T00:00:00');
+                             const endDate = new Date(parts[1] + 'T00:00:00');
+                             const durationDays = Math.floor((endDate.getTime() - startDate.getTime()) / MS_PER_DAY) + 1;
+                             const midDate = new Date(startDate.getTime() + Math.ceil(durationDays / 2) * MS_PER_DAY);
+                             
+                             holidays.push({
+                                 start: startDate,
+                                 end: endDate,
+                                 mid: midDate,
+                                 firstHalfParent: parts[2],
+                                 id: Date.now() + index // Utilise l'index pour garantir l'unicité
+                             });
+                         }
+                    }
+                });
+            }
+
+            // 6. Mise à jour de l'interface et du calendrier
+            renderHolidayList(); // Affiche la liste des vacances importées
+            initCalendar(); // (Appelle updateNames() et changeColor())
+            alert("Configuration importée avec succès !");
+
+        } catch (error) {
+            console.error("Erreur lors de l'importation:", error);
+            alert("Erreur lors de l'importation du fichier. Veuillez vérifier le format du CSV.");
+        }
+    };
+    
+    reader.readAsText(file);
+}
         /**
  * Détermine à quel parent appartient la date donnée, en tenant compte des vacances
  * et en compensant les semaines incomplètes.
