@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Calendrier de Garde Alternée</title>
     <style>
-        /* Style CSS */
+        /* 🎨 Style CSS */
         body {
             font-family: Arial, sans-serif;
             display: flex;
@@ -16,7 +16,7 @@
 
         .calendar-container {
             width: 100%;
-            max-width: 900px; /* Légèrement plus large pour la configuration */
+            max-width: 950px; 
             background-color: #fff;
             box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
             border-radius: 8px;
@@ -32,12 +32,18 @@
             background-color: #e9ecef;
         }
         
-        /* Configuration des noms et cycle standard */
         .standard-config {
             display: grid;
             grid-template-columns: repeat(3, 1fr);
             gap: 15px;
             margin-bottom: 15px;
+        }
+        /* Style pour les deux nouvelles options du cycle */
+        .cycle-config {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-top: 15px;
         }
 
         /* Configuration des vacances */
@@ -56,9 +62,14 @@
             flex-grow: 1;
         }
         
-        .holiday-list-item {
-            padding: 5px 0;
-            border-bottom: 1px dotted #eee;
+        /* Configuration de la vue Année Scolaire */
+        .school-year-config {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-top: 20px;
+            padding-top: 15px;
+            border-top: 1px solid #ccc;
         }
 
         .config-header label {
@@ -69,6 +80,7 @@
 
         .config-header input[type="date"], 
         .config-header input[type="text"], 
+        .config-header input[type="number"], 
         .config-header select {
             padding: 8px;
             border-radius: 4px;
@@ -85,7 +97,7 @@
             white-space: nowrap;
         }
 
-        /* En-tête du calendrier */
+        /* En-tête du calendrier (vue un mois) */
         .calendar-header {
             display: flex;
             justify-content: space-between;
@@ -110,58 +122,67 @@
             color: #333;
         }
 
-        /* Tableau du calendrier */
-        #calendar {
+        /* TABLEAU UNIQUE (vue un mois) */
+        #calendar-table {
             width: 100%;
             border-collapse: collapse;
         }
+        
+        /* CONTENEUR ANNEE COMPLETE (vue multi-mois) */
+        #full-year-view {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+            margin-top: 20px;
+        }
+        
+        .month-calendar {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 10px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+            border-radius: 4px;
+            overflow: hidden;
+        }
 
-        #calendar th {
+        .month-calendar caption {
+            font-weight: bold;
+            font-size: 1.2em;
+            padding: 8px 0;
             background-color: #3498db;
             color: white;
-            padding: 10px;
+            border-top-left-radius: 4px;
+            border-top-right-radius: 4px;
+        }
+
+        #calendar-table th, .month-calendar th {
+            background-color: #5dade2; /* Bleu légèrement plus clair */
+            color: white;
+            padding: 8px;
             font-weight: bold;
         }
 
-        #calendar td {
+        #calendar-table td, .month-calendar td {
             border: 1px solid #eee;
-            padding: 10px 5px;
+            padding: 6px 3px;
             text-align: center;
-            height: 60px; /* Espace pour la couleur */
+            height: 50px; 
             cursor: default;
             transition: background-color 0.2s;
-            position: relative; /* Pour le titre/tooltip */
+            position: relative; 
+            font-size: 0.9em;
         }
         
-        /* Couleurs d'alternance standard (Parent A/B) */
-        .parent-a {
-            background-color: #add8e6; /* Bleu clair */
-            color: #333;
-        }
-
-        .parent-b {
-            background-color: #90ee90; /* Vert clair */
-            color: #333;
-        }
+        /* Couleurs d'alternance standard */
+        .parent-a { background-color: #add8e6; /* Bleu clair */ color: #333; }
+        .parent-b { background-color: #90ee90; /* Vert clair */ color: #333; }
         
         /* Couleurs de Vacances (V: Vacances) - Override standard */
-        .v-parent-a {
-            background-color: #f7a9a8; /* Rouge rosé */
-            border: 2px dashed #e74c3c;
-            font-weight: bold;
-        }
-
-        .v-parent-b {
-            background-color: #a8d5f7; /* Bleu ciel */
-            border: 2px dashed #3498db;
-            font-weight: bold;
-        }
+        .v-parent-a { background-color: #f7a9a8; /* Rouge rosé */ border: 2px dashed #e74c3c; font-weight: bold; }
+        .v-parent-b { background-color: #a8d5f7; /* Bleu ciel */ border: 2px dashed #3498db; font-weight: bold; }
 
         /* Jours hors mois */
-        .out-of-month {
-            background-color: #f8f8f8;
-            color: #ccc;
-        }
+        .out-of-month { background-color: #f8f8f8; color: #ccc; }
 
         /* Légende */
         .legend {
@@ -192,7 +213,7 @@
         <h1 style="text-align: center; color: #3498db;">🗓️ Calendrier de Garde Alternée</h1>
         
         <div class="config-header">
-            <h3>Configuration Standard</h3>
+            <h3>Configuration du Cycle Standard</h3>
             <div class="standard-config">
                 <div>
                     <label for="nameA">Nom du Parent A :</label>
@@ -207,7 +228,19 @@
                     <input type="date" id="refDate" value="2025-01-06" onchange="initCalendar()">
                 </div>
             </div>
-            <label for="startParent">Parent qui commence le cycle standard :</label>
+
+            <div class="cycle-config">
+                <div>
+                    <label for="weeksA">Durée Parent A (semaines) :</label>
+                    <input type="number" id="weeksA" value="2" min="1" onchange="initCalendar()">
+                </div>
+                <div>
+                    <label for="weeksB">Durée Parent B (semaines) :</label>
+                    <input type="number" id="weeksB" value="2" min="1" onchange="initCalendar()">
+                </div>
+            </div>
+
+            <label for="startParent" style="margin-top: 15px;">Parent qui commence le cycle standard :</label>
             <select id="startParent" onchange="initCalendar()" style="width: auto;">
                 <option value="parent-a" id="opt-parent-a">Maman</option>
                 <option value="parent-b" id="opt-parent-b">Papa</option>
@@ -239,46 +272,41 @@
                 <p>Aucune période de vacances définie.</p>
             </div>
         </div>
-
-        <div class="calendar-header">
-            <button id="prev-month" onclick="changeMonth(-1)"> &lt; Mois Précédent </button>
-            <h2 id="month-year"></h2>
-            <button id="next-month" onclick="changeMonth(1)"> Mois Suivant &gt; </button>
+        
+        <div class="config-header school-year-config">
+            <label for="schoolYearStart">Année scolaire de départ (ex: 2025-2026) :</label>
+            <input type="number" id="schoolYearStart" value="2025" min="2000" style="width: 80px;" onchange="updateSchoolYearView()">
+            <button onclick="renderSchoolYear()" style="background-color: #e67e22; color: white; flex-shrink: 0;">Afficher l'année complète (Juil X - Août X+1)</button>
+            <button onclick="toggleView('single')" style="background-color: #95a5a6; color: white; flex-shrink: 0;">Afficher le mois actuel</button>
         </div>
 
-        <table id="calendar">
-            <thead>
-                <tr>
-                    <th>Lun</th>
-                    <th>Mar</th>
-                    <th>Mer</th>
-                    <th>Jeu</th>
-                    <th>Ven</th>
-                    <th>Sam</th>
-                    <th>Dim</th>
-                </tr>
-            </thead>
-            <tbody id="calendar-body">
-                </tbody>
-        </table>
+
+        <div id="single-month-view">
+            <div class="calendar-header">
+                <button id="prev-month" onclick="changeMonth(-1)"> &lt; Mois Précédent </button>
+                <h2 id="month-year"></h2>
+                <button id="next-month" onclick="changeMonth(1)"> Mois Suivant &gt; </button>
+            </div>
+
+            <table id="calendar-table">
+                <thead>
+                    <tr>
+                        <th>Lun</th><th>Mar</th><th>Mer</th><th>Jeu</th><th>Ven</th><th>Sam</th><th>Dim</th>
+                    </tr>
+                </thead>
+                <tbody id="calendar-body">
+                    </tbody>
+            </table>
+        </div>
+
+        <div id="full-year-view" style="display: none;">
+            </div>
 
         <div class="legend">
-            <div class="legend-item">
-                <div class="color-box parent-a"></div>
-                <span id="legend-name-a">Parent A (standard)</span>
-            </div>
-            <div class="legend-item">
-                <div class="color-box parent-b"></div>
-                <span id="legend-name-b">Parent B (standard)</span>
-            </div>
-            <div class="legend-item">
-                <div class="color-box v-parent-a"></div>
-                <span id="legend-vac-a">Parent A (vacances)</span>
-            </div>
-            <div class="legend-item">
-                <div class="color-box v-parent-b"></div>
-                <span id="legend-vac-b">Parent B (vacances)</span>
-            </div>
+            <div class="legend-item"><div class="color-box parent-a"></div><span id="legend-name-a">Parent A (standard)</span></div>
+            <div class="legend-item"><div class="color-box parent-b"></div><span id="legend-name-b">Parent B (standard)</span></div>
+            <div class="legend-item"><div class="color-box v-parent-a"></div><span id="legend-vac-a">Parent A (vacances)</span></div>
+            <div class="legend-item"><div class="color-box v-parent-b"></div><span id="legend-vac-b">Parent B (vacances)</span></div>
         </div>
     </div>
 
@@ -287,30 +315,28 @@
         let currentMonth = new Date().getMonth();
         let currentYear = new Date().getFullYear();
         const MS_PER_DAY = 1000 * 60 * 60 * 24;
-
-        // NOUVEAU: Tableau pour stocker les périodes de vacances
         let holidays = []; 
         
-        // --- LOGIQUE DE GARDE STANDARD (CYCLE 14 JOURS) ---
-        /**
-         * Détermine à quel parent appartient la date donnée, SANS tenir compte des vacances.
-         * @returns {{class: string, name: string}} La classe CSS et le nom du parent.
-         */
+        // --- LOGIQUE DE GARDE STANDARD ---
         function getStandardCycleParent(date, refDate, startParentClass) {
             const nameA = document.getElementById('nameA').value || 'Parent A';
             const nameB = document.getElementById('nameB').value || 'Parent B';
             
-            // Calculer la différence en millisecondes, puis en jours
-            const diffDays = Math.floor((date.getTime() - refDate.getTime()) / MS_PER_DAY);
-            let dayInCycle = diffDays % 14; 
+            const weeksA = parseInt(document.getElementById('weeksA').value) || 1;
+            const weeksB = parseInt(document.getElementById('weeksB').value) || 1;
+
+            const daysA = weeksA * 7;
+            const cycleLengthDays = daysA + (weeksB * 7);
             
-            // Assurer que le résultat est positif pour les dates antérieures à REF_DATE
+            const diffDays = Math.floor((date.getTime() - refDate.getTime()) / MS_PER_DAY);
+            let dayInCycle = diffDays % cycleLengthDays; 
+            
             if (dayInCycle < 0) {
-                dayInCycle += 14;
+                dayInCycle += cycleLengthDays;
             }
 
-            // Déterminer la classe de base (Parent A = jours 0 à 6, Parent B = jours 7 à 13)
-            let baseInfo = (dayInCycle >= 0 && dayInCycle <= 6) ? 
+            // Parent A = jours 0 à (daysA - 1)
+            let baseInfo = (dayInCycle >= 0 && dayInCycle < daysA) ? 
                 { class: 'parent-a', name: nameA } : 
                 { class: 'parent-b', name: nameB };
 
@@ -327,14 +353,7 @@
         }
         
         // --- LOGIQUE DE DÉTECTION ET D'OVERRIDE DE VACANCES ---
-        
-        /**
-         * Vérifie si la date tombe dans une période de vacances et retourne l'override.
-         * @param {Date} date - La date à vérifier.
-         * @returns {{class: string, name: string} | null} L'override si trouvé, sinon null.
-         */
         function getHolidayOverride(date) {
-            // Créer une date sans l'heure pour une comparaison propre
             const dateOnly = new Date(date.getFullYear(), date.getMonth(), date.getDate());
 
             for (const h of holidays) {
@@ -344,65 +363,49 @@
                 const dateTimestamp = dateOnly.getTime();
 
                 if (dateTimestamp >= startTimestamp && dateTimestamp <= endTimestamp) {
-                    // Période de vacances trouvée
-                    let parentClass;
-                    let parentName;
-
-                    // Définir les noms basés sur la config actuelle
                     const nameA = document.getElementById('nameA').value || 'Parent A';
                     const nameB = document.getElementById('nameB').value || 'Parent B';
                     
                     const firstParentName = (h.firstHalfParent === 'parent-a' ? nameA : nameB);
                     const secondParentName = (h.firstHalfParent === 'parent-a' ? nameB : nameA);
                     
-                    // Déterminer le parent pour ce jour spécifique (split 50/50)
+                    let parentClass;
+                    let parentName;
+                    
                     if (dateTimestamp < midTimestamp) {
-                        // Première moitié
                         parentClass = h.firstHalfParent;
                         parentName = firstParentName + " (Vacances 1/2)";
                     } else {
-                        // Deuxième moitié
                         parentClass = (h.firstHalfParent === 'parent-a' ? 'parent-b' : 'parent-a');
                         parentName = secondParentName + " (Vacances 2/2)";
                     }
 
-                    // Retourner l'override
                     return { 
-                        class: 'v-' + parentClass, // Utiliser la classe visuelle de vacances
+                        class: 'v-' + parentClass, 
                         name: parentName,
                         isHoliday: true
                     };
                 }
             }
 
-            return null; // Aucune période de vacances trouvée
+            return null;
         }
         
-        /**
-         * Fonction principale de détermination du parent (inclut l'override des vacances).
-         */
         function getParent(date, refDate, startParentClass) {
-            // 1. Priorité aux vacances
             const holidayOverride = getHolidayOverride(date);
             if (holidayOverride) {
                 return holidayOverride;
             }
-            
-            // 2. Si pas de vacances, cycle standard
             return getStandardCycleParent(date, refDate, startParentClass);
         }
         
         // --- FONCTIONS DE GESTION DE LA CONFIGURATION ---
 
-        /**
-         * Ajoute une nouvelle période de vacances à la liste.
-         */
         function addHoliday() {
             const startInput = document.getElementById('holiday-start');
             const endInput = document.getElementById('holiday-end');
             const parentInput = document.getElementById('holiday-parent');
 
-            // Ajout de 'T00:00:00' pour s'assurer que les dates sont au début du jour
             const startDate = new Date(startInput.value + 'T00:00:00');
             const endDate = new Date(endInput.value + 'T00:00:00');
             const firstHalfParent = parentInput.value;
@@ -412,11 +415,9 @@
                 return;
             }
             
-            // Calcul de la date de séparation 50/50
             const durationDays = Math.floor((endDate.getTime() - startDate.getTime()) / MS_PER_DAY) + 1;
-            const midDayOffset = Math.ceil(durationDays / 2); // Ex: 14 jours -> 7. 1er moitié = 7 jours
+            const midDayOffset = Math.ceil(durationDays / 2); 
             
-            // midDate est le premier jour de la 2ème moitié de vacances
             const midDate = new Date(startDate.getTime() + (midDayOffset) * MS_PER_DAY);
 
             holidays.push({
@@ -431,21 +432,22 @@
             endInput.value = '';
             
             renderHolidayList();
-            renderCalendar();
+            renderCalendar(); 
+            // Si la vue année est active, la rafraîchir
+            if(document.getElementById('full-year-view').style.display !== 'none') {
+                renderSchoolYear();
+            }
         }
 
-        /**
-         * Supprime une période de vacances par ID.
-         */
         function removeHoliday(id) {
             holidays = holidays.filter(h => h.id !== id);
             renderHolidayList();
             renderCalendar();
+             if(document.getElementById('full-year-view').style.display !== 'none') {
+                renderSchoolYear();
+            }
         }
 
-        /**
-         * Met à jour la liste affichée des périodes de vacances.
-         */
         function renderHolidayList() {
             const listDiv = document.getElementById('holiday-list');
             listDiv.innerHTML = '';
@@ -458,7 +460,6 @@
             holidays.sort((a, b) => a.start - b.start).forEach(h => {
                 const startStr = h.start.toLocaleDateString('fr-FR');
                 const endStr = h.end.toLocaleDateString('fr-FR');
-                // Le jour avant la mi-date est la fin de la 1ère moitié
                 const endHalf1 = new Date(h.mid.getTime() - MS_PER_DAY).toLocaleDateString('fr-FR');
                 
                 const parentName1 = (h.firstHalfParent === 'parent-a' ? document.getElementById('nameA').value : document.getElementById('nameB').value) || 'Parent 1';
@@ -476,110 +477,180 @@
             });
         }
         
-        /**
-         * Met à jour les noms des parents dans la légende et le sélecteur de départ.
-         */
         function updateNames() {
             const nameA = document.getElementById('nameA').value || 'Parent A';
             const nameB = document.getElementById('nameB').value || 'Parent B';
             
-            // Mettre à jour la légende standard
             document.getElementById('legend-name-a').textContent = `${nameA} (standard)`;
             document.getElementById('legend-name-b').textContent = `${nameB} (standard)`;
-            
-            // Mettre à jour la légende de vacances
             document.getElementById('legend-vac-a').textContent = `${nameA} (vacances)`;
             document.getElementById('legend-vac-b').textContent = `${nameB} (vacances)`;
 
-            // Mettre à jour le sélecteur du parent qui commence
             document.getElementById('opt-parent-a').textContent = nameA;
             document.getElementById('opt-parent-b').textContent = nameB;
 
-            // NOUVEAU: Mettre à jour la liste des vacances (pour les noms)
+            // Mettre à jour les noms dans les sélecteurs de vacances
+            const holidayParentSelect = document.getElementById('holiday-parent');
+            holidayParentSelect.options[0].textContent = nameA;
+            holidayParentSelect.options[1].textContent = nameB;
+
             renderHolidayList();
-
-            // Rafraîchir le calendrier
             renderCalendar();
+            if(document.getElementById('full-year-view').style.display !== 'none') {
+                renderSchoolYear();
+            }
         }
-
-
-        // --- LOGIQUE D'AFFICHAGE DU CALENDRIER ---
-
+        
+        // --- LOGIQUE DE GÉNÉRATION HTML (REFACTORISÉE) ---
+        
         /**
-         * Génère et affiche le calendrier pour le mois et l'année courants.
+         * Génère l'HTML pour le corps d'un mois donné.
+         * @returns {string} Le code HTML du tbody du calendrier.
          */
-        function renderCalendar() {
-            const body = document.getElementById('calendar-body');
-            const monthYearText = document.getElementById('month-year');
+        function generateMonthHtml(month, year) {
             const refDateInput = document.getElementById('refDate');
             const startParentSelect = document.getElementById('startParent');
-
-            // 1. Récupération de la configuration
-            const refDate = new Date(refDateInput.value + 'T00:00:00'); // S'assurer qu'on utilise 00:00:00
+            const refDate = new Date(refDateInput.value + 'T00:00:00'); 
             const startParentClass = startParentSelect.value;
             
-            // 2. Initialisation des dates du mois
-            const firstDayOfMonth = new Date(currentYear, currentMonth, 1);
-            const lastDayOfMonth = new Date(currentYear, currentMonth + 1, 0);
+            const firstDayOfMonth = new Date(year, month, 1);
+            const lastDayOfMonth = new Date(year, month + 1, 0);
             
-            // Calcul du décalage pour que la semaine commence le Lundi (1) et non Dimanche (0)
             let startOffset = firstDayOfMonth.getDay(); 
             if (startOffset === 0) startOffset = 7; 
             startOffset = startOffset - 1; 
 
-            // Mise à jour de l'affichage de l'en-tête
-            const monthName = firstDayOfMonth.toLocaleDateString('fr-FR', { month: 'long' });
-            monthYearText.textContent = `${monthName.charAt(0).toUpperCase() + monthName.slice(1)} ${currentYear}`;
-            
-            body.innerHTML = ''; // Nettoyer l'ancien contenu
-
-            // 3. Boucle de génération des jours
             let date = 1;
-            for (let i = 0; i < 6; i++) { // Max 6 semaines
-                const row = document.createElement('tr');
+            let html = '';
+
+            for (let i = 0; i < 6; i++) { 
+                let row = '<tr>';
                 let hasRealDay = false; 
 
-                for (let j = 0; j < 7; j++) { // 7 jours de la semaine
-                    const cell = document.createElement('td');
-                    cell.className = ''; // Réinitialiser les classes
-
+                for (let j = 0; j < 7; j++) {
+                    let cellClasses = '';
+                    let cellContent = '';
+                    let titleAttribute = '';
+                    
                     if (i === 0 && j < startOffset) {
-                        // Jours du mois précédent
-                        cell.classList.add('out-of-month');
+                        cellClasses = 'out-of-month';
                     } else if (date > lastDayOfMonth.getDate()) {
-                        // Jours du mois suivant
-                        cell.classList.add('out-of-month');
+                        cellClasses = 'out-of-month';
                     } else {
-                        // Jours du mois actuel
-                        const currentDate = new Date(currentYear, currentMonth, date);
-                        
-                        // --- APPLICATION DE LA LOGIQUE DE GARDE ALTERNÉE (incluant vacances) ---
+                        const currentDate = new Date(year, month, date);
                         const parentInfo = getParent(currentDate, refDate, startParentClass);
                         
-                        cell.textContent = date;
-                        cell.classList.add(parentInfo.class);
-                        cell.setAttribute('title', parentInfo.name); 
-                        // ---------------------------------------------------------------------
+                        cellContent = date;
+                        cellClasses = parentInfo.class;
+                        titleAttribute = `title="${parentInfo.name}"`;
                         
                         date++;
                         hasRealDay = true;
                     }
-                    row.appendChild(cell);
+                    row += `<td class="${cellClasses}" ${titleAttribute}>${cellContent}</td>`;
                 }
+                row += '</tr>';
                 
                 if (hasRealDay) {
-                    body.appendChild(row);
+                    html += row;
                 }
                 
                 if (date > lastDayOfMonth.getDate()) {
-                    break;
+                    break; 
                 }
             }
+            return html;
         }
 
+        // --- NOUVELLE LOGIQUE D'AFFICHAGE ANNUEL ---
+
         /**
-         * Change le mois affiché et rafraîchit le calendrier.
+         * Bascule entre la vue d'un mois et la vue de l'année complète.
          */
+        function toggleView(mode) {
+            const singleView = document.getElementById('single-month-view');
+            const fullYearView = document.getElementById('full-year-view');
+
+            if (mode === 'single') {
+                singleView.style.display = 'block';
+                fullYearView.style.display = 'none';
+                renderCalendar(); // Afficher le mois actuel
+            } else if (mode === 'full') {
+                singleView.style.display = 'none';
+                fullYearView.style.display = 'grid'; // Utiliser grid pour le layout
+            }
+        }
+        
+        /**
+         * Affiche 14 mois consécutifs (Juillet X à Août X+1).
+         */
+        function renderSchoolYear() {
+            const container = document.getElementById('full-year-view');
+            container.innerHTML = '';
+            
+            const startYear = parseInt(document.getElementById('schoolYearStart').value);
+            const endYear = startYear + 1;
+            
+            // Le calendrier de l'année scolaire va de Juillet (6) de l'Année X à Août (7) de l'Année X+1
+            // Nous allons itérer sur 14 mois (Juillet à Décembre de l'Année X, puis Janvier à Août de l'Année X+1)
+            
+            let currentYearLoop = startYear;
+            let currentMonthLoop = 6; // Juillet (0=Jan, 6=Juil)
+            
+            for (let i = 0; i < 14; i++) {
+                
+                // Gérer le changement d'année (passage de Décembre (11) à Janvier (0))
+                if (currentMonthLoop > 11) {
+                    currentMonthLoop = 0;
+                    currentYearLoop = endYear;
+                }
+                
+                // Générer le corps du calendrier pour le mois/année
+                const tbodyHtml = generateMonthHtml(currentMonthLoop, currentYearLoop);
+                
+                // Nom du mois pour le titre
+                const monthDate = new Date(currentYearLoop, currentMonthLoop, 1);
+                const monthName = monthDate.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
+                const capitalizedMonthName = monthName.charAt(0).toUpperCase() + monthName.slice(1);
+                
+                // Créer la table complète
+                const monthTable = document.createElement('table');
+                monthTable.classList.add('month-calendar');
+                monthTable.innerHTML = `
+                    <caption>${capitalizedMonthName}</caption>
+                    <thead>
+                        <tr>
+                            <th>Lun</th><th>Mar</th><th>Mer</th><th>Jeu</th><th>Ven</th><th>Sam</th><th>Dim</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${tbodyHtml}
+                    </tbody>
+                `;
+                
+                container.appendChild(monthTable);
+                currentMonthLoop++;
+            }
+            
+            toggleView('full'); // Afficher la vue complète
+        }
+
+
+        // --- LOGIQUE D'AFFICHAGE DU CALENDRIER (UN MOIS) ---
+        
+        function renderCalendar() {
+            const body = document.getElementById('calendar-body');
+            const monthYearText = document.getElementById('month-year');
+            
+            // Mise à jour de l'affichage de l'en-tête (pour la vue un mois)
+            const firstDayOfMonth = new Date(currentYear, currentMonth, 1);
+            const monthName = firstDayOfMonth.toLocaleDateString('fr-FR', { month: 'long' });
+            monthYearText.textContent = `${monthName.charAt(0).toUpperCase() + monthName.slice(1)} ${currentYear}`;
+            
+            // Remplir le corps du calendrier (tbody)
+            body.innerHTML = generateMonthHtml(currentMonth, currentYear);
+        }
+
         function changeMonth(delta) {
             currentMonth += delta;
             
@@ -594,21 +665,31 @@
             renderCalendar();
         }
 
-        /**
-         * Initialise le calendrier au chargement de la page.
-         */
         function initCalendar() {
-            // 1. Initialiser l'affichage des noms et de la liste de vacances
-            updateNames(); 
-            
-            // 2. Initialiser le calendrier sur le mois actuel
+            updateNames(); // Gère aussi renderHolidayList() et renderCalendar()
+        }
+        
+        // --- Initialisation ---
+        
+        /**
+         * Met à jour l'année de départ par défaut lors du premier chargement.
+         */
+        function updateSchoolYearStartDefault() {
             const today = new Date();
-            currentMonth = today.getMonth();
-            currentYear = today.getFullYear();
-            renderCalendar();
+            const currentMonth = today.getMonth(); // 0-11
+            let defaultYear = today.getFullYear();
+            
+            // Si on est entre Janvier et Juin (0 à 5), l'année scolaire de départ est l'année précédente (ex: on est en mai 2026, l'année scolaire est 2025)
+            if (currentMonth >= 0 && currentMonth <= 5) {
+                defaultYear = defaultYear - 1;
+            }
+            
+            document.getElementById('schoolYearStart').value = defaultYear;
         }
 
+
         // Démarrer le calendrier
+        updateSchoolYearStartDefault();
         initCalendar();
     </script>
 
