@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calendrier de Garde Alternée</title>
+    <style>
+        /* 🎨 Style CSS */
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            padding: 20px;
+            background-color: #f4f7f6;
+        }
+
+        .calendar-container {
+            width: 100%;
+            max-width: 800px;
+            background-color: #fff;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            border-radius: 8px;
+            padding: 20px;
+        }
+
+        /* En-tête de configuration */
+        .config-header {
+            margin-bottom: 20px;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            background-color: #e9ecef;
+        }
+
+        .config-header label {
+            font-weight: bold;
+            display: block;
+            margin-top: 10px;
+        }
+
+        .config-header input, .config-header select {
+            padding: 8px;
+            margin-right: 20px;
+            border-radius: 4px;
+            border: 1px solid #ccc;
+        }
+
+        /* En-tête du calendrier */
+        .calendar-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding: 10px 0;
+            border-bottom: 2px solid #3498db;
+        }
+
+        .calendar-header button {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            cursor: pointer;
+            border-radius: 4px;
+            font-size: 16px;
+        }
+
+        .calendar-header h2 {
+            margin: 0;
+            color: #333;
+        }
+
+        /* Tableau du calendrier */
+        #calendar {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        #calendar th {
+            background-color: #3498db;
+            color: white;
+            padding: 10px;
+            font-weight: bold;
+        }
+
+        #calendar td {
+            border: 1px solid #eee;
+            padding: 10px 5px;
+            text-align: center;
+            height: 60px; /* Espace pour la couleur */
+            cursor: default; /* Pas de clic par défaut */
+            transition: background-color 0.2s;
+        }
+
+        /* Couleurs d'alternance */
+        .parent-a {
+            background-color: #add8e6; /* Bleu clair */
+            color: #333;
+        }
+
+        .parent-b {
+            background-color: #90ee90; /* Vert clair */
+            color: #333;
+        }
+
+        /* Jours hors mois */
+        .out-of-month {
+            background-color: #f8f8f8;
+            color: #ccc;
+        }
+
+        /* Légende */
+        .legend {
+            margin-top: 20px;
+            padding-top: 15px;
+            border-top: 1px solid #ddd;
+            display: flex;
+            gap: 20px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+        }
+
+        .color-box {
+            width: 20px;
+            height: 20px;
+            margin-right: 8px;
+            border: 1px solid #ccc;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="calendar-container">
+        <h1 style="text-align: center; color: #3498db;">🗓️ Calendrier de Garde Alternée</h1>
+        
+        <div class="config-header">
+            <h3>Configuration de la Garde</h3>
+            <label for="refDate">Date de début du cycle (Lundi) :</label>
+            <input type="date" id="refDate" value="2025-01-06" onchange="initCalendar()">
+            
+            <label for="startParent">Parent qui commence :</label>
+            <select id="startParent" onchange="initCalendar()">
+                <option value="parent-a">Parent A</option>
+                <option value="parent-b">Parent B</option>
+            </select>
+        </div>
+
+        <div class="calendar-header">
+            <button id="prev-month" onclick="changeMonth(-1)"> &lt; Mois Précédent </button>
+            <h2 id="month-year"></h2>
+            <button id="next-month" onclick="changeMonth(1)"> Mois Suivant &gt; </button>
+        </div>
+
+        <table id="calendar">
+            <thead>
+                <tr>
+                    <th>Lun</th>
+                    <th>Mar</th>
+                    <th>Mer</th>
+                    <th>Jeu</th>
+                    <th>Ven</th>
+                    <th>Sam</th>
+                    <th>Dim</th>
+                </tr>
+            </thead>
+            <tbody id="calendar-body">
+                </tbody>
+        </table>
+
+        <div class="legend">
+            <div class="legend-item">
+                <div class="color-box parent-a"></div>
+                <span>Parent A (semaine 1)</span>
+            </div>
+            <div class="legend-item">
+                <div class="color-box parent-b"></div>
+                <span>Parent B (semaine 2)</span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 🧠 Logique JavaScript
+        let currentMonth = new Date().getMonth();
+        let currentYear = new Date().getFullYear();
+
+        const MS_PER_DAY = 1000 * 60 * 60 * 24;
+
+        /**
+         * Détermine à quel parent appartient la date donnée, en se basant sur la date de référence.
+         * Le cycle est une alternance de 14 jours (une semaine Parent A, une semaine Parent B).
+         * @param {Date} date - La date à vérifier.
+         * @param {Date} refDate - La date de référence pour le début du cycle (doit être un LUNDI).
+         * @param {string} startParentClass - La classe ('parent-a' ou 'parent-b') du parent qui commence à refDate.
+         * @returns {string} La classe CSS ('parent-a' ou 'parent-b').
+         */
+        function getParent(date, refDate, startParentClass) {
+            // Calculer la différence en millisecondes, puis en jours
+            const diffDays = Math.floor((date.getTime() - refDate.getTime()) / MS_PER_DAY);
+            
+            // Calculer la position dans le cycle de 14 jours (Modulo 14)
+            let dayInCycle = diffDays % 14; 
+            
+            // Assurer que le résultat est positif pour les dates antérieures à REF_DATE
+            if (dayInCycle < 0) {
+                dayInCycle += 14;
+            }
+
+            // Déterminer la classe de base (Parent A = jours 0 à 6, Parent B = jours 7 à 13)
+            let baseClass = (dayInCycle >= 0 && dayInCycle <= 6) ? 'parent-a' : 'parent-b';
+
+            // Si le parent qui commence est 'parent-b', il faut inverser les classes
+            if (startParentClass === 'parent-b') {
+                return baseClass === 'parent-a' ? 'parent-b' : 'parent-a';
+            }
+
+            return baseClass;
+        }
+
+        /**
+         * Génère et affiche le calendrier pour le mois et l'année courants.
+         */
+        function renderCalendar() {
+            const body = document.getElementById('calendar-body');
+            const monthYearText = document.getElementById('month-year');
+            const refDateInput = document.getElementById('refDate');
+            const startParentSelect = document.getElementById('startParent');
+
+            // 1. Récupération de la configuration
+            const refDate = new Date(refDateInput.value);
+            const startParentClass = startParentSelect.value;
+            
+            // Vérification simple (la date de référence doit être un Lundi)
+            // Note: getDay() retourne 1 pour Lundi, 0 pour Dimanche, etc.
+            if (refDate.getDay() !== 1) {
+                // Vous pourriez ajouter un message d'erreur ici pour l'utilisateur
+                console.warn("La date de référence devrait idéalement être un LUNDI pour un cycle de 14 jours.");
+            }
+
+            // 2. Initialisation des dates
+            const firstDayOfMonth = new Date(currentYear, currentMonth, 1);
+            const lastDayOfMonth = new Date(currentYear, currentMonth + 1, 0);
+            
+            // getDay() de JS: 0=Dim, 1=Lun, ..., 6=Sam. On veut 1=Lun.
+            // On calcule le décalage pour que le Lundi soit le 1er jour de la ligne.
+            let startOffset = firstDayOfMonth.getDay(); 
+            if (startOffset === 0) startOffset = 7; // Dimanche devient 7
+            startOffset = startOffset - 1; // Le décalage est (JourJS - 1)
+
+            // Mise à jour de l'affichage de l'en-tête
+            const monthName = firstDayOfMonth.toLocaleDateString('fr-FR', { month: 'long' });
+            monthYearText.textContent = `${monthName.charAt(0).toUpperCase() + monthName.slice(1)} ${currentYear}`;
+            
+            body.innerHTML = ''; // Nettoyer l'ancien contenu
+
+            // 3. Boucle de génération des jours
+            let date = 1;
+            for (let i = 0; i < 6; i++) { // Max 6 semaines
+                const row = document.createElement('tr');
+                let hasRealDay = false; // Pour éviter les lignes entièrement vides
+
+                for (let j = 0; j < 7; j++) { // 7 jours de la semaine
+                    const cell = document.createElement('td');
+                    
+                    if (i === 0 && j < startOffset) {
+                        // Jours du mois précédent (cellules vides au début)
+                        cell.textContent = '';
+                        cell.classList.add('out-of-month');
+                    } else if (date > lastDayOfMonth.getDate()) {
+                        // Jours du mois suivant (cellules vides à la fin)
+                        cell.textContent = '';
+                        cell.classList.add('out-of-month');
+                    } else {
+                        // Jours du mois actuel
+                        const currentDate = new Date(currentYear, currentMonth, date);
+                        
+                        cell.textContent = date;
+                        
+                        // --- APPLICATION DE LA LOGIQUE DE GARDE ALTERNÉE ---
+                        const parentClass = getParent(currentDate, refDate, startParentClass);
+                        cell.classList.add(parentClass);
+                        // --------------------------------------------------
+                        
+                        date++;
+                        hasRealDay = true;
+                    }
+                    row.appendChild(cell);
+                }
+                
+                // Ajouter la ligne uniquement si elle contient au moins un jour du mois
+                if (hasRealDay) {
+                    body.appendChild(row);
+                }
+                
+                if (date > lastDayOfMonth.getDate()) {
+                    break; // Arrêter si tous les jours du mois ont été placés
+                }
+            }
+        }
+
+        /**
+         * Change le mois affiché et rafraîchit le calendrier.
+         * @param {number} delta - 1 pour le mois suivant, -1 pour le mois précédent.
+         */
+        function changeMonth(delta) {
+            currentMonth += delta;
+            
+            if (currentMonth < 0) {
+                currentMonth = 11;
+                currentYear--;
+            } else if (currentMonth > 11) {
+                currentMonth = 0;
+                currentYear++;
+            }
+            
+            renderCalendar();
+        }
+
+        /**
+         * Initialise le calendrier au chargement de la page.
+         */
+        function initCalendar() {
+            // S'assurer que currentMonth/currentYear correspond à la date actuelle au premier chargement
+            const today = new Date();
+            currentMonth = today.getMonth();
+            currentYear = today.getFullYear();
+            renderCalendar();
+        }
+
+        // Démarrer le calendrier
+        initCalendar();
+    </script>
+
+</body>
+</html>
