@@ -5,6 +5,22 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Calendrier de Garde Alternée</title>
     <style>
+        /* Définition des variables CSS pour les couleurs (couleurs par défaut) */
+        :root {
+            /* Couleurs Standard */
+            --color-a-bg: #add8e6;    /* Bleu clair */
+            --color-b-bg: #90ee90;    /* Vert clair */
+            
+            /* Couleurs Vacances */
+            --color-va-bg: #f7a9a8;   /* Rouge rosé */
+            --color-va-border: #e74c3c;
+            --color-vb-bg: #a8d5f7;   /* Bleu ciel */
+            --color-vb-border: #3498db;
+            
+            /* Couleurs de Texte */
+            --color-text-light: #333;
+        }
+
         /* 🎨 Style CSS */
         body {
             font-family: Arial, sans-serif;
@@ -14,16 +30,28 @@
             background-color: #f4f7f6;
         }
 
-        .calendar-container {
+        /* NOUVEAU: Mise en page principale (2 colonnes) */
+        .main-container {
+            display: flex;
+            gap: 20px;
             width: 100%;
-            max-width: 950px; 
+            max-width: 1400px; /* Augmenter la largeur maximale */
+        }
+
+        #config-panel {
+            width: 400px; /* Largeur fixe pour le panneau de configuration */
+            flex-shrink: 0;
+            transition: margin-left 0.3s ease-in-out;
+        }
+
+        .calendar-display {
+            flex-grow: 1;
             background-color: #fff;
             box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
             border-radius: 8px;
             padding: 20px;
         }
-
-        /* Conteneurs de configuration */
+        
         .config-header {
             margin-bottom: 20px;
             padding: 15px;
@@ -32,21 +60,19 @@
             background-color: #e9ecef;
         }
         
+        /* Grilles internes de configuration */
         .standard-config {
             display: grid;
             grid-template-columns: repeat(3, 1fr);
             gap: 15px;
             margin-bottom: 15px;
         }
-        /* Style pour les deux nouvelles options du cycle */
         .cycle-config {
             display: grid;
             grid-template-columns: 1fr 1fr;
             gap: 15px;
             margin-top: 15px;
         }
-
-        /* Configuration des vacances */
         .holiday-input-group {
             display: flex;
             gap: 10px;
@@ -55,14 +81,11 @@
             padding-bottom: 10px;
             border-bottom: 1px dashed #ccc;
         }
-        
         .holiday-input-group > div {
             display: flex;
             flex-direction: column;
             flex-grow: 1;
         }
-        
-        /* Configuration de la vue Année Scolaire */
         .school-year-config {
             display: flex;
             align-items: center;
@@ -70,6 +93,13 @@
             margin-top: 20px;
             padding-top: 15px;
             border-top: 1px solid #ccc;
+        }
+        .color-picker-group {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-top: 10px;
+            margin-bottom: 20px;
         }
 
         .config-header label {
@@ -88,7 +118,14 @@
             width: 100%;
             box-sizing: border-box;
         }
-        
+        .config-header input[type="color"] {
+            width: 100%;
+            height: 35px;
+            padding: 0;
+            border: none;
+            cursor: pointer;
+        }
+
         .config-header button {
             padding: 8px 15px;
             border: none;
@@ -156,7 +193,7 @@
         }
 
         #calendar-table th, .month-calendar th {
-            background-color: #5dade2; /* Bleu légèrement plus clair */
+            background-color: #5dade2;
             color: white;
             padding: 8px;
             font-weight: bold;
@@ -173,13 +210,27 @@
             font-size: 0.9em;
         }
         
-        /* Couleurs d'alternance standard */
-        .parent-a { background-color: #add8e6; /* Bleu clair */ color: #333; }
-        .parent-b { background-color: #90ee90; /* Vert clair */ color: #333; }
-        
+        /* Couleurs d'alternance standard (Parent A/B) */
+        .parent-a { 
+            background-color: var(--color-a-bg); 
+            color: var(--color-text-light); 
+        }
+        .parent-b { 
+            background-color: var(--color-b-bg); 
+            color: var(--color-text-light); 
+        }
+
         /* Couleurs de Vacances (V: Vacances) - Override standard */
-        .v-parent-a { background-color: #f7a9a8; /* Rouge rosé */ border: 2px dashed #e74c3c; font-weight: bold; }
-        .v-parent-b { background-color: #a8d5f7; /* Bleu ciel */ border: 2px dashed #3498db; font-weight: bold; }
+        .v-parent-a { 
+            background-color: var(--color-va-bg); 
+            border: 2px dashed var(--color-va-border); 
+            font-weight: bold; 
+        }
+        .v-parent-b { 
+            background-color: var(--color-vb-bg); 
+            border: 2px dashed var(--color-vb-border); 
+            font-weight: bold; 
+        }
 
         /* Jours hors mois */
         .out-of-month { background-color: #f8f8f8; color: #ccc; }
@@ -209,104 +260,131 @@
 </head>
 <body>
 
-    <div class="calendar-container">
-        <h1 style="text-align: center; color: #3498db;">🗓️ Calendrier de Garde Alternée</h1>
+    <div class="main-container">
         
-        <div class="config-header">
-            <h3>Configuration du Cycle Standard</h3>
-            <div class="standard-config">
-                <div>
-                    <label for="nameA">Nom du Parent A :</label>
-                    <input type="text" id="nameA" value="Maman" onchange="updateNames()">
+        <div id="config-panel">
+            <h1 style="text-align: center; color: #3498db;">🗓️ Configuration</h1>
+            
+            <div class="config-header">
+                <h3>Paramètres du Cycle et Noms</h3>
+                <div class="standard-config">
+                    <div>
+                        <label for="nameA">Nom du Parent A :</label>
+                        <input type="text" id="nameA" value="Maman" onchange="updateNames()">
+                    </div>
+                    <div>
+                        <label for="nameB">Nom du Parent B :</label>
+                        <input type="text" id="nameB" value="Papa" onchange="updateNames()">
+                    </div>
+                    <div>
+                        <label for="refDate">Date de début du cycle (Lundi) :</label>
+                        <input type="date" id="refDate" value="2025-01-06" onchange="initCalendar()">
+                    </div>
                 </div>
-                <div>
-                    <label for="nameB">Nom du Parent B :</label>
-                    <input type="text" id="nameB" value="Papa" onchange="updateNames()">
+
+                <div class="cycle-config">
+                    <div>
+                        <label for="weeksA">Durée Parent A (semaines) :</label>
+                        <input type="number" id="weeksA" value="2" min="1" onchange="initCalendar()">
+                    </div>
+                    <div>
+                        <label for="weeksB">Durée Parent B (semaines) :</label>
+                        <input type="number" id="weeksB" value="2" min="1" onchange="initCalendar()">
+                    </div>
                 </div>
-                <div>
-                    <label for="refDate">Date de début du cycle (Lundi) :</label>
-                    <input type="date" id="refDate" value="2025-01-06" onchange="initCalendar()">
-                </div>
+
+                <label for="startParent" style="margin-top: 15px;">Parent qui commence le cycle standard :</label>
+                <select id="startParent" onchange="initCalendar()" style="width: auto;">
+                    <option value="parent-a" id="opt-parent-a">Maman</option>
+                    <option value="parent-b" id="opt-parent-b">Papa</option>
+                </select>
             </div>
 
-            <div class="cycle-config">
-                <div>
-                    <label for="weeksA">Durée Parent A (semaines) :</label>
-                    <input type="number" id="weeksA" value="2" min="1" onchange="initCalendar()">
+            <div class="config-header" id="holiday-config">
+                <h3>Remplacement des Périodes de Vacances (50/50)</h3>
+                <div class="holiday-input-group">
+                    <div>
+                        <label for="holiday-start">Début (inclus) :</label>
+                        <input type="date" id="holiday-start">
+                    </div>
+                    <div>
+                        <label for="holiday-end">Fin (inclus) :</label>
+                        <input type="date" id="holiday-end">
+                    </div>
+                    <div>
+                        <label for="holiday-parent">Garde 1ère moitié :</label>
+                        <select id="holiday-parent">
+                            <option value="parent-a">Parent A</option>
+                            <option value="parent-b">Parent B</option>
+                        </select>
+                    </div>
+                    <button onclick="addHoliday()" style="background-color: #2ecc71; color: white;">Ajouter</button>
                 </div>
-                <div>
-                    <label for="weeksB">Durée Parent B (semaines) :</label>
-                    <input type="number" id="weeksB" value="2" min="1" onchange="initCalendar()">
+                
+                <div id="holiday-list">
+                    <p>Aucune période de vacances définie.</p>
                 </div>
-            </div>
-
-            <label for="startParent" style="margin-top: 15px;">Parent qui commence le cycle standard :</label>
-            <select id="startParent" onchange="initCalendar()" style="width: auto;">
-                <option value="parent-a" id="opt-parent-a">Maman</option>
-                <option value="parent-b" id="opt-parent-b">Papa</option>
-            </select>
-        </div>
-
-        <div class="config-header" id="holiday-config">
-            <h3>Remplacement des Périodes de Vacances (50/50)</h3>
-            <div class="holiday-input-group">
-                <div>
-                    <label for="holiday-start">Début (inclus) :</label>
-                    <input type="date" id="holiday-start">
-                </div>
-                <div>
-                    <label for="holiday-end">Fin (inclus) :</label>
-                    <input type="date" id="holiday-end">
-                </div>
-                <div>
-                    <label for="holiday-parent">Garde 1ère moitié :</label>
-                    <select id="holiday-parent">
-                        <option value="parent-a">Parent A</option>
-                        <option value="parent-b">Parent B</option>
-                    </select>
-                </div>
-                <button onclick="addHoliday()" style="background-color: #2ecc71; color: white;">Ajouter</button>
             </div>
             
-            <div id="holiday-list">
-                <p>Aucune période de vacances définie.</p>
+            <div class="config-header">
+                <h3>🎨 Personnalisation des Couleurs</h3>
+                <div class="color-picker-group">
+                    <label for="colorA">Couleur Parent A :</label>
+                    <input type="color" id="colorA" value="#add8e6" onchange="changeColor()">
+                    
+                    <label for="colorB">Couleur Parent B :</label>
+                    <input type="color" id="colorB" value="#90ee90" onchange="changeColor()">
+                    
+                    <label for="colorVA">Couleur Vacances A :</label>
+                    <input type="color" id="colorVA" value="#f7a9a8" onchange="changeColor()">
+                    
+                    <label for="colorVB">Couleur Vacances B :</label>
+                    <input type="color" id="colorVB" value="#a8d5f7" onchange="changeColor()">
+                </div>
             </div>
         </div>
-        
-        <div class="config-header school-year-config">
-            <label for="schoolYearStart">Année scolaire de départ (ex: 2025-2026) :</label>
-            <input type="number" id="schoolYearStart" value="2025" min="2000" style="width: 80px;" onchange="updateSchoolYearView()">
-            <button onclick="renderSchoolYear()" style="background-color: #e67e22; color: white; flex-shrink: 0;">Afficher l'année complète (Juil X - Août X+1)</button>
-            <button onclick="toggleView('single')" style="background-color: #95a5a6; color: white; flex-shrink: 0;">Afficher le mois actuel</button>
-        </div>
 
-
-        <div id="single-month-view">
-            <div class="calendar-header">
-                <button id="prev-month" onclick="changeMonth(-1)"> &lt; Mois Précédent </button>
-                <h2 id="month-year"></h2>
-                <button id="next-month" onclick="changeMonth(1)"> Mois Suivant &gt; </button>
+        <div class="calendar-display">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <h1 style="color: #3498db;">Calendrier de Garde</h1>
+                <button onclick="toggleConfig()" style="background-color: #f39c12; color: white;">Masquer/Afficher Config</button>
             </div>
 
-            <table id="calendar-table">
-                <thead>
-                    <tr>
-                        <th>Lun</th><th>Mar</th><th>Mer</th><th>Jeu</th><th>Ven</th><th>Sam</th><th>Dim</th>
-                    </tr>
-                </thead>
-                <tbody id="calendar-body">
-                    </tbody>
-            </table>
-        </div>
-
-        <div id="full-year-view" style="display: none;">
+            <div class="config-header school-year-config" style="border: none;">
+                <label for="schoolYearStart">Année scolaire de départ (ex: 2025-2026) :</label>
+                <input type="number" id="schoolYearStart" value="2025" min="2000" style="width: 80px;" onchange="updateSchoolYearView()">
+                <button onclick="renderSchoolYear()" style="background-color: #e67e22; color: white; flex-shrink: 0;">Afficher l'année complète (Juil X - Août X+1)</button>
+                <button onclick="toggleView('single')" style="background-color: #95a5a6; color: white; flex-shrink: 0;">Afficher le mois actuel</button>
             </div>
 
-        <div class="legend">
-            <div class="legend-item"><div class="color-box parent-a"></div><span id="legend-name-a">Parent A (standard)</span></div>
-            <div class="legend-item"><div class="color-box parent-b"></div><span id="legend-name-b">Parent B (standard)</span></div>
-            <div class="legend-item"><div class="color-box v-parent-a"></div><span id="legend-vac-a">Parent A (vacances)</span></div>
-            <div class="legend-item"><div class="color-box v-parent-b"></div><span id="legend-vac-b">Parent B (vacances)</span></div>
+
+            <div id="single-month-view">
+                <div class="calendar-header">
+                    <button id="prev-month" onclick="changeMonth(-1)"> &lt; Mois Précédent </button>
+                    <h2 id="month-year"></h2>
+                    <button id="next-month" onclick="changeMonth(1)"> Mois Suivant &gt; </button>
+                </div>
+
+                <table id="calendar-table">
+                    <thead>
+                        <tr>
+                            <th>Lun</th><th>Mar</th><th>Mer</th><th>Jeu</th><th>Ven</th><th>Sam</th><th>Dim</th>
+                        </tr>
+                    </thead>
+                    <tbody id="calendar-body">
+                        </tbody>
+                </table>
+            </div>
+
+            <div id="full-year-view" style="display: none;">
+                </div>
+
+            <div class="legend">
+                <div class="legend-item"><div class="color-box parent-a"></div><span id="legend-name-a">Parent A (standard)</span></div>
+                <div class="legend-item"><div class="color-box parent-b"></div><span id="legend-name-b">Parent B (standard)</span></div>
+                <div class="legend-item"><div class="color-box v-parent-a"></div><span id="legend-vac-a">Parent A (vacances)</span></div>
+                <div class="legend-item"><div class="color-box v-parent-b"></div><span id="legend-vac-b">Parent B (vacances)</span></div>
+            </div>
         </div>
     </div>
 
@@ -335,12 +413,10 @@
                 dayInCycle += cycleLengthDays;
             }
 
-            // Parent A = jours 0 à (daysA - 1)
             let baseInfo = (dayInCycle >= 0 && dayInCycle < daysA) ? 
                 { class: 'parent-a', name: nameA } : 
                 { class: 'parent-b', name: nameB };
 
-            // Inversion si le parent B commence
             if (startParentClass === 'parent-b') {
                 if (baseInfo.class === 'parent-a') {
                     return { class: 'parent-b', name: nameB };
@@ -352,7 +428,7 @@
             return baseInfo;
         }
         
-        // --- LOGIQUE DE DÉTECTION ET D'OVERRIDE DE VACANCES ---
+        // --- LOGIQUE D'OVERRIDE DE VACANCES ---
         function getHolidayOverride(date) {
             const dateOnly = new Date(date.getFullYear(), date.getMonth(), date.getDate());
 
@@ -399,7 +475,7 @@
             return getStandardCycleParent(date, refDate, startParentClass);
         }
         
-        // --- FONCTIONS DE GESTION DE LA CONFIGURATION ---
+        // --- GESTION DES VACANCES ---
 
         function addHoliday() {
             const startInput = document.getElementById('holiday-start');
@@ -433,7 +509,6 @@
             
             renderHolidayList();
             renderCalendar(); 
-            // Si la vue année est active, la rafraîchir
             if(document.getElementById('full-year-view').style.display !== 'none') {
                 renderSchoolYear();
             }
@@ -477,6 +552,8 @@
             });
         }
         
+        // --- GESTION DES NOMS ET COULEURS D'INTERFACE ---
+
         function updateNames() {
             const nameA = document.getElementById('nameA').value || 'Parent A';
             const nameB = document.getElementById('nameB').value || 'Parent B';
@@ -489,7 +566,6 @@
             document.getElementById('opt-parent-a').textContent = nameA;
             document.getElementById('opt-parent-b').textContent = nameB;
 
-            // Mettre à jour les noms dans les sélecteurs de vacances
             const holidayParentSelect = document.getElementById('holiday-parent');
             holidayParentSelect.options[0].textContent = nameA;
             holidayParentSelect.options[1].textContent = nameB;
@@ -501,12 +577,47 @@
             }
         }
         
-        // --- LOGIQUE DE GÉNÉRATION HTML (REFACTORISÉE) ---
+        function changeColor() {
+            const root = document.documentElement;
+            
+            const colorA = document.getElementById('colorA').value;
+            const colorB = document.getElementById('colorB').value;
+            const colorVA = document.getElementById('colorVA').value;
+            const colorVB = document.getElementById('colorVB').value;
+
+            // Changement des couleurs de fond standard
+            root.style.setProperty('--color-a-bg', colorA);
+            root.style.setProperty('--color-b-bg', colorB);
+            
+            // Changement des couleurs de fond et bordure des vacances
+            root.style.setProperty('--color-va-bg', colorVA);
+            root.style.setProperty('--color-vb-bg', colorVB);
+            
+            // Les bordures des vacances prennent la couleur de fond
+            root.style.setProperty('--color-va-border', colorVA);
+            root.style.setProperty('--color-vb-border', colorVB);
+            
+            // Rafraîchir l'affichage
+            if(document.getElementById('full-year-view').style.display !== 'none') {
+                renderSchoolYear();
+            } else {
+                renderCalendar();
+            }
+        }
         
-        /**
-         * Génère l'HTML pour le corps d'un mois donné.
-         * @returns {string} Le code HTML du tbody du calendrier.
-         */
+        function toggleConfig() {
+            const configPanel = document.getElementById('config-panel');
+            const isHidden = configPanel.style.marginLeft === '-400px';
+
+            if (isHidden) {
+                configPanel.style.marginLeft = '0'; 
+            } else {
+                configPanel.style.marginLeft = '-400px'; 
+            }
+        }
+
+        // --- GESTION DES VUES CALENDRIER ---
+
         function generateMonthHtml(month, year) {
             const refDateInput = document.getElementById('refDate');
             const startParentSelect = document.getElementById('startParent');
@@ -562,11 +673,6 @@
             return html;
         }
 
-        // --- NOUVELLE LOGIQUE D'AFFICHAGE ANNUEL ---
-
-        /**
-         * Bascule entre la vue d'un mois et la vue de l'année complète.
-         */
         function toggleView(mode) {
             const singleView = document.getElementById('single-month-view');
             const fullYearView = document.getElementById('full-year-view');
@@ -574,16 +680,13 @@
             if (mode === 'single') {
                 singleView.style.display = 'block';
                 fullYearView.style.display = 'none';
-                renderCalendar(); // Afficher le mois actuel
+                renderCalendar(); 
             } else if (mode === 'full') {
                 singleView.style.display = 'none';
-                fullYearView.style.display = 'grid'; // Utiliser grid pour le layout
+                fullYearView.style.display = 'grid'; 
             }
         }
         
-        /**
-         * Affiche 14 mois consécutifs (Juillet X à Août X+1).
-         */
         function renderSchoolYear() {
             const container = document.getElementById('full-year-view');
             container.innerHTML = '';
@@ -591,29 +694,22 @@
             const startYear = parseInt(document.getElementById('schoolYearStart').value);
             const endYear = startYear + 1;
             
-            // Le calendrier de l'année scolaire va de Juillet (6) de l'Année X à Août (7) de l'Année X+1
-            // Nous allons itérer sur 14 mois (Juillet à Décembre de l'Année X, puis Janvier à Août de l'Année X+1)
-            
             let currentYearLoop = startYear;
             let currentMonthLoop = 6; // Juillet (0=Jan, 6=Juil)
             
-            for (let i = 0; i < 14; i++) {
+            for (let i = 0; i < 14; i++) { // 14 mois (Juillet X à Août X+1)
                 
-                // Gérer le changement d'année (passage de Décembre (11) à Janvier (0))
                 if (currentMonthLoop > 11) {
                     currentMonthLoop = 0;
                     currentYearLoop = endYear;
                 }
                 
-                // Générer le corps du calendrier pour le mois/année
                 const tbodyHtml = generateMonthHtml(currentMonthLoop, currentYearLoop);
                 
-                // Nom du mois pour le titre
                 const monthDate = new Date(currentYearLoop, currentMonthLoop, 1);
                 const monthName = monthDate.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
                 const capitalizedMonthName = monthName.charAt(0).toUpperCase() + monthName.slice(1);
                 
-                // Créer la table complète
                 const monthTable = document.createElement('table');
                 monthTable.classList.add('month-calendar');
                 monthTable.innerHTML = `
@@ -632,22 +728,17 @@
                 currentMonthLoop++;
             }
             
-            toggleView('full'); // Afficher la vue complète
+            toggleView('full'); 
         }
 
-
-        // --- LOGIQUE D'AFFICHAGE DU CALENDRIER (UN MOIS) ---
-        
         function renderCalendar() {
             const body = document.getElementById('calendar-body');
             const monthYearText = document.getElementById('month-year');
             
-            // Mise à jour de l'affichage de l'en-tête (pour la vue un mois)
             const firstDayOfMonth = new Date(currentYear, currentMonth, 1);
             const monthName = firstDayOfMonth.toLocaleDateString('fr-FR', { month: 'long' });
             monthYearText.textContent = `${monthName.charAt(0).toUpperCase() + monthName.slice(1)} ${currentYear}`;
             
-            // Remplir le corps du calendrier (tbody)
             body.innerHTML = generateMonthHtml(currentMonth, currentYear);
         }
 
@@ -665,21 +756,14 @@
             renderCalendar();
         }
 
-        function initCalendar() {
-            updateNames(); // Gère aussi renderHolidayList() et renderCalendar()
-        }
-        
         // --- Initialisation ---
-        
-        /**
-         * Met à jour l'année de départ par défaut lors du premier chargement.
-         */
+
         function updateSchoolYearStartDefault() {
             const today = new Date();
             const currentMonth = today.getMonth(); // 0-11
             let defaultYear = today.getFullYear();
             
-            // Si on est entre Janvier et Juin (0 à 5), l'année scolaire de départ est l'année précédente (ex: on est en mai 2026, l'année scolaire est 2025)
+            // Si on est entre Janvier et Juin (0 à 5), l'année scolaire de départ est l'année précédente
             if (currentMonth >= 0 && currentMonth <= 5) {
                 defaultYear = defaultYear - 1;
             }
@@ -687,8 +771,12 @@
             document.getElementById('schoolYearStart').value = defaultYear;
         }
 
-
-        // Démarrer le calendrier
+        function initCalendar() {
+            // L'ordre est important ici
+            updateNames(); 
+            changeColor(); 
+        }
+        
         updateSchoolYearStartDefault();
         initCalendar();
     </script>
