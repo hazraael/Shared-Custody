@@ -314,24 +314,45 @@
 
             <div class="config-header" id="holiday-config">
                 <h3>Remplacement des Périodes de Vacances (50/50)</h3>
-                <div class="holiday-input-group">
-                    <div class="input-item">
-                        <label for="holiday-start">Début (inclus) :</label>
-                        <input type="date" id="holiday-start">
+
+                <p style="margin-top: -10px; font-weight: bold;">
+                    Importez les vacances scolaires depuis un fichier .ics (recommandé).
+                </p>
+
+                <div class="holiday-input-group" style="border: none; padding-bottom: 0;">
+                    <div class="input-item" style="flex-grow: 1;">
+                        <label for="schoolZone">Zone Scolaire (Filtre) :</label>
+                        <select id="schoolZone" style="width: 100%;">
+                            <option value="A">Zone A</option>
+                            <option value="B">Zone B</option>
+                            <option value="C">Zone C</option>
+                            <option value="CORSE">Corse</option>
+                            <option value="TOUTES">Toutes les Zones</option>
+                        </select>
                     </div>
-                    <div class="input-item">
-                        <label for="holiday-end">Fin (inclus) :</label>
-                        <input type="date" id="holiday-end">
-                    </div>
-                    <div class="input-item">
-                        <label for="holiday-parent">Garde 1ère moitié :</label>
+                    
+                    <div class="input-item" style="flex-grow: 1;">
+                        <label for="holiday-parent">Garde 1ère moitié (par défaut) :</label>
                         <select id="holiday-parent">
                             <option value="parent-a">Parent A</option>
                             <option value="parent-b">Parent B</option>
                         </select>
                     </div>
-                    <button onclick="addHoliday()" class="add-button" style="background-color: #2ecc71; color: white;">Ajouter</button>
                 </div>
+
+                <div class="holiday-input-group">
+                    <input type="file" id="icsFile" accept=".ics" style="display: none;" onchange="importIcsHolidays()">
+                    <button onclick="document.getElementById('icsFile').click()" class="add-button" style="background-color: #e67e22; color: white;">
+                        1. Téléchargez le .ics puis cliquez ici pour l'importer
+                    </button>
+                    <a href="https://fr.ftp.opendatasoft.com/openscol/fr-en-calendrier-scolaire/Zone-A-B-C-Corse.ics" target="_blank" style="text-decoration: none;">
+                        <button style="background-color: #3498db; color: white; height: 35px; padding: 0 15px;">
+                            2. Lien de Téléchargement
+                        </button>
+                    </a>
+                </div>
+                
+                <p style="margin-top: 20px; font-weight: bold;">Liste des périodes de vacances définies :</p>
                 
                 <div id="holiday-list">
                     <p>Aucune période de vacances définie.</p>
@@ -412,7 +433,95 @@
         let currentYear = new Date().getFullYear();
         const MS_PER_DAY = 1000 * 60 * 60 * 24;
         let holidays = []; 
-        
+        // --- FONCTION D'IMPORT ICS (iCalendar) ---
+
+/**
+ * Lit et analyse un fichier ICS importé pour extraire les périodes de vacances.
+ */
+function importIcsHolidays() {
+    const fileInput = document.getElementById('icsFile');
+    const file = fileInput.files[0];
+    const selectedZone = document.getElementById('schoolZone').value;
+    const firstHalfParent = document.getElementById('holiday-parent').value;
+    
+    if (!file) {
+        return;
+    }
+    
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        try {
+            const icsContent = e.target.result;
+            const lines = icsContent.split('\n');
+            
+            // Regex pour trouver les événements de vacances
+            const eventRegex = /BEGIN:VEVENT([\s\S]*?)END:VEVENT/g;
+            let match;
+            let importedCount = 0;
+
+            // Vider les vacances précédentes avant l'importation
+            holidays = [];
+
+            while ((match = eventRegex.exec(icsContent)) !== null) {
+                const eventText = match[1];
+                
+                // Extraction des données
+                const summaryMatch = eventText.match(/SUMMARY:Vacances (.*?) Zone ([A-Z]*)/);
+                const dtStartMatch = eventText.match(/DTSTART;VALUE=DATE:(\d{8})/);
+                const dtEndMatch = eventText.match(/DTEND;VALUE=DATE:(\d{8})/);
+
+                if (summaryMatch && dtStartMatch && dtEndMatch) {
+                    const zone = summaryMatch[2];
+                    
+                    // Filtrer par la zone sélectionnée (si ce n'est pas "TOUTES")
+                    if (selectedZone !== 'TOUTES' && selectedZone !== zone) {
+                        continue;
+                    }
+
+                    const startStr = dtStartMatch[1]; // Format AAAA MM JJ
+                    const endStr = dtEndMatch[1];     // Format AAAA MM JJ
+
+                    // Conversion des dates (ICS utilise une date de fin exclusive)
+                    // DTSTART: AAAA-MM-JJ (inclusive)
+                    // DTEND: AAAA-MM-JJ+1 (exclusive, correspond à la date de reprise)
+                    
+                    const startDate = new Date(`${startStr.substring(0,4)}-${startStr.substring(4,6)}-${startStr.substring(6,8)}T00:00:00`);
+                    
+                    // La date de fin de la garde est le jour AVANT la DTEND du fichier ICS (la reprise des cours).
+                    const endDateExclusive = new Date(`${endStr.substring(0,4)}-${endStr.substring(4,6)}-${endStr.substring(6,8)}T00:00:00`);
+                    const endDate = new Date(endDateExclusive.getTime() - MS_PER_DAY);
+                    
+                    // Calcul du point milieu (mid)
+                    const durationDays = Math.floor((endDate.getTime() - startDate.getTime()) / MS_PER_DAY) + 1;
+                    const midDate = new Date(startDate.getTime() + Math.ceil(durationDays / 2) * MS_PER_DAY);
+
+                    holidays.push({
+                        start: startDate,
+                        end: endDate,
+                        mid: midDate,
+                        firstHalfParent: firstHalfParent,
+                        id: Date.now() + importedCount++
+                    });
+                }
+            }
+            
+            if (importedCount === 0) {
+                 alert("Aucune période de vacances trouvée ou correspondant à la zone sélectionnée dans ce fichier ICS.");
+            } else {
+                 alert(`${importedCount} périodes de vacances de la Zone ${selectedZone} ont été importées avec succès !`);
+            }
+
+            renderHolidayList();
+            initCalendar();
+
+        } catch (error) {
+            console.error("Erreur lors de l'analyse du fichier ICS:", error);
+            alert("Erreur lors de l'importation du fichier ICS. Veuillez vérifier le format.");
+        }
+    };
+    
+    reader.readAsText(file);
+}
         // --- LOGIQUE DE GARDE STANDARD ---
         function getStandardCycleParent(date, refDate, startParentClass) {
             const nameA = document.getElementById('nameA').value || 'Parent A';
@@ -612,129 +721,7 @@ function importConfig() {
     
     reader.readAsText(file);
 }
-        /**
- * Détermine à quel parent appartient la date donnée, en tenant compte des vacances
- * et en compensant les semaines incomplètes.
- */
-function getParent(date, refDate, startParentClass) {
-    // 1. Priorité absolue aux vacances
-    const holidayOverride = getHolidayOverride(date);
-    if (holidayOverride) {
-        return holidayOverride;
-    }
-
-    // 2. Récupérer les paramètres du cycle
-    const weeksA = parseInt(document.getElementById('weeksA').value) || 1;
-    const weeksB = parseInt(document.getElementById('weeksB').value) || 1;
-    const daysA = weeksA * 7;
-    const cycleLengthDays = daysA + (weeksB * 7);
-
-    // --- LOGIQUE DE COMPENSATION ---
-
-    const dateTimestamp = new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
-
-    let actualRefDate = new Date(refDate.getTime());
-    let actualStartParentClass = startParentClass;
-
-    // Trouver la dernière fin de vacances avant la date actuelle
-    let lastHolidayEndInfo = null;
-    let maxEndTimestamp = -1;
-
-    for (const h of holidays) {
-        // La fin des vacances doit être antérieure à la date actuelle
-        if (h.end.getTime() < dateTimestamp && h.end.getTime() > maxEndTimestamp) {
-            lastHolidayEndInfo = h;
-            maxEndTimestamp = h.end.getTime();
-        }
-    }
-    
-    // Si nous trouvons une période de vacances passée
-    if (lastHolidayEndInfo) {
-        
-        // Date de reprise: le jour suivant la fin des vacances
-        const restartDate = new Date(lastHolidayEndInfo.end.getTime() + MS_PER_DAY);
-        
-        // --- 2. Détermination de la compensation ---
-        
-        // Le jour avant le début des vacances (le point d'interruption)
-        const dayBeforeHoliday = new Date(lastHolidayEndInfo.start.getTime() - MS_PER_DAY);
-        
-        // Quel était le statut du cycle standard le jour avant l'interruption ?
-        const infoBeforeHoliday = getStandardCycleParent(dayBeforeHoliday, refDate, startParentClass);
-        const parentBeforeHoliday = infoBeforeHoliday.class; // parent-a ou parent-b
-        
-        // Nombre total de jours du cycle que le parent interrompu devait avoir
-        const parentCycleDays = (parentBeforeHoliday === 'parent-a') ? daysA : (weeksB * 7);
-        
-        // Nombre de jours que ce parent a déjà eu avant l'interruption :
-        // On se base sur le cycle initial.
-        const diffDaysToRef = Math.floor((dayBeforeHoliday.getTime() - refDate.getTime()) / MS_PER_DAY);
-        let dayInCycle = diffDaysToRef % cycleLengthDays;
-        if (dayInCycle < 0) dayInCycle += cycleLengthDays;
-
-        // Si le Parent A est le parent interrompu (standard A = jours 0 à daysA-1)
-        if (parentBeforeHoliday === 'parent-a') {
-            // Le jour de l'interruption (diffDaysToRef) est dans le cycle de A.
-            // On calcule combien de jours il reste au Parent A dans son cycle de daysA jours.
-            
-            let parentStartDayInCycle = 0;
-            if (actualStartParentClass === 'parent-b') {
-                parentStartDayInCycle = daysA;
-            }
-            
-            // Si le cycle a été inversé par startParentClass
-            let dayInParentCycle;
-            if (startParentClass === 'parent-a') {
-                 dayInParentCycle = dayInCycle; // Si dans la période A (0 à daysA-1)
-            } else {
-                 dayInParentCycle = dayInCycle - daysA; // Si dans la période B (daysA à cycleLengthDays-1)
-            }
-            
-            // Récupérer le jour par rapport au début du cycle du parent (0-based)
-            if (dayInCycle >= 0 && dayInCycle < daysA) {
-                // Parent A standard
-                dayInParentCycle = dayInCycle;
-            } else {
-                // Parent B standard
-                 dayInParentCycle = dayInCycle - daysA;
-            }
-
-            // On compense si le cycle a été interrompu DANS la période d'un parent (jour < jours total)
-            const daysRemaining = parentCycleDays - (dayInParentCycle + 1); // +1 car 0-based
-
-            if (daysRemaining > 0) {
-                // Le parent interrompu doit reprendre pour récupérer les jours manqués.
-                // On reprend avec le parent qui avait la garde avant les vacances,
-                // mais on décale le point de départ du cycle standard.
-                
-                // Calculer le décalage pour que la REPRISE standard commence le cycle du parent
-                // qui a été interrompu et lui laisse le temps de finir sa période.
-                
-                // La nouvelle date de référence doit être la date de reprise,
-                // et le parent qui commence le cycle à cette date est le parent interrompu.
-                
-                actualRefDate = restartDate;
-                actualStartParentClass = parentBeforeHoliday;
-
-            } else {
-                // Si daysRemaining est <= 0, le parent interrompu a terminé sa période
-                // le jour avant les vacances, ou aurait dû la finir.
-                // Le cycle doit donc reprendre avec le parent INVERSE
-                
-                const lastHolidayParentClass = (lastHolidayEndInfo.firstHalfParent === 'parent-a' ? 'parent-b' : 'parent-a');
-
-                actualRefDate = restartDate;
-                actualStartParentClass = (lastHolidayParentClass === 'parent-a' ? 'parent-b' : 'parent-a');
-            }
-        }
-    }
-
-    // 3. Calculer la garde standard avec la référence potentiellement décalée
-    
-    // Si un décalage a été calculé, on le réutilise pour le calcul standard.
-    // Sinon, on utilise la référence initiale.
-    return getStandardCycleParent(date, actualRefDate, actualStartParentClass);
-}
+     2semaine papa, 1semaine vacance maman, 1 semaine vacance papa, 2semaine papa.
 
 // NOTE: La fonction getStandardCycleParent est supposée être la même que précédemment,
 // elle calcule le parent en fonction d'une date de référence (lundi) et d'un parent de départ.
