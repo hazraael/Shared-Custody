@@ -341,16 +341,16 @@
             <div class="config-header">
                 <h3>🎨 Personnalisation des Couleurs</h3>
                 <div class="color-picker-group">
-                    <label for="colorA">Couleur Parent A :</label>
+                    <label for="colorA" id="label-colorA">Couleur Parent A :</label>
                     <input type="color" id="colorA" value="#add8e6" onchange="changeColor()">
                     
-                    <label for="colorB">Couleur Parent B :</label>
+                    <label for="colorB" id="label-colorB">Couleur Parent B :</label>
                     <input type="color" id="colorB" value="#90ee90" onchange="changeColor()">
                     
-                    <label for="colorVA">Couleur Vacances A :</label>
+                    <label for="colorVA" id="label-colorVA">Couleur Vacances A :</label>
                     <input type="color" id="colorVA" value="#f7a9a8" onchange="changeColor()">
                     
-                    <label for="colorVB">Couleur Vacances B :</label>
+                    <label for="colorVB" id="label-colorVB">Couleur Vacances B :</label>
                     <input type="color" id="colorVB" value="#a8d5f7" onchange="changeColor()">
                 </div>
             </div>
@@ -817,30 +817,35 @@ function getParent(date, refDate, startParentClass) {
             });
         }
         
-        // --- GESTION DES NOMS ET COULEURS D'INTERFACE ---
-
         function updateNames() {
-            const nameA = document.getElementById('nameA').value || 'Parent A';
-            const nameB = document.getElementById('nameB').value || 'Parent B';
-            
-            document.getElementById('legend-name-a').textContent = `${nameA} (standard)`;
-            document.getElementById('legend-name-b').textContent = `${nameB} (standard)`;
-            document.getElementById('legend-vac-a').textContent = `${nameA} (vacances)`;
-            document.getElementById('legend-vac-b').textContent = `${nameB} (vacances)`;
+    const nameA = document.getElementById('nameA').value || 'Parent A';
+    const nameB = document.getElementById('nameB').value || 'Parent B';
+    
+    // --- Mise à jour de la Légende ---
+    document.getElementById('legend-name-a').textContent = `${nameA} (standard)`;
+    document.getElementById('legend-name-b').textContent = `${nameB} (standard)`;
+    document.getElementById('legend-vac-a').textContent = `${nameA} (vacances)`;
+    document.getElementById('legend-vac-b').textContent = `${nameB} (vacances)`;
 
-            document.getElementById('opt-parent-a').textContent = nameA;
-            document.getElementById('opt-parent-b').textContent = nameB;
+    document.getElementById('opt-parent-a').textContent = nameA;
+    document.getElementById('opt-parent-b').textContent = nameB;
 
-            const holidayParentSelect = document.getElementById('holiday-parent');
-            holidayParentSelect.options[0].textContent = nameA;
-            holidayParentSelect.options[1].textContent = nameB;
+    const holidayParentSelect = document.getElementById('holiday-parent');
+    holidayParentSelect.options[0].textContent = nameA;
+    holidayParentSelect.options[1].textContent = nameB;
 
-            renderHolidayList();
-            renderCalendar();
-            if(document.getElementById('full-year-view').style.display !== 'none') {
-                renderSchoolYear();
-            }
-        }
+    // --- Mise à jour des libellés de Couleur (avec IDs) ---
+    document.getElementById('label-colorA').textContent = `Couleur ${nameA} :`;
+    document.getElementById('label-colorB').textContent = `Couleur ${nameB} :`;
+    document.getElementById('label-colorVA').textContent = `Couleur Vacances ${nameA} :`;
+    document.getElementById('label-colorVB').textContent = `Couleur Vacances ${nameB} :`;
+
+    renderHolidayList();
+    renderCalendar();
+    if(document.getElementById('full-year-view').style.display !== 'none') {
+        renderSchoolYear();
+    }
+}
         
         function changeColor() {
             const root = document.documentElement;
