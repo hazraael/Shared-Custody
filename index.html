@@ -137,16 +137,23 @@
         <h1 style="text-align: center; color: #3498db;">🗓️ Calendrier de Garde Alternée</h1>
         
         <div class="config-header">
-            <h3>Configuration de la Garde</h3>
-            <label for="refDate">Date de début du cycle (Lundi) :</label>
-            <input type="date" id="refDate" value="2025-01-06" onchange="initCalendar()">
-            
-            <label for="startParent">Parent qui commence :</label>
-            <select id="startParent" onchange="initCalendar()">
-                <option value="parent-a">Parent A</option>
-                <option value="parent-b">Parent B</option>
-            </select>
-        </div>
+    <h3>Configuration de la Garde</h3>
+
+    <label for="nameA">Nom du Parent A :</label>
+    <input type="text" id="nameA" value="Maman" onchange="updateNames()">
+
+    <label for="nameB">Nom du Parent B :</label>
+    <input type="text" id="nameB" value="Papa" onchange="updateNames()">
+    
+    <label for="refDate">Date de début du cycle (Lundi) :</label>
+    <input type="date" id="refDate" value="2025-01-06" onchange="initCalendar()">
+    
+    <label for="startParent">Parent qui commence :</label>
+    <select id="startParent" onchange="initCalendar()">
+        <option value="parent-a">Parent A</option>
+        <option value="parent-b">Parent B</option>
+    </select>
+</div>
 
         <div class="calendar-header">
             <button id="prev-month" onclick="changeMonth(-1)"> &lt; Mois Précédent </button>
@@ -173,11 +180,11 @@
         <div class="legend">
             <div class="legend-item">
                 <div class="color-box parent-a"></div>
-                <span>Parent A (semaine 1)</span>
+                <span id="legend-name-a">Parent A (semaine 1)</span>
             </div>
             <div class="legend-item">
                 <div class="color-box parent-b"></div>
-                <span>Parent B (semaine 2)</span>
+                <span id="legend-name-b">Parent B (semaine 2)</span>
             </div>
         </div>
     </div>
@@ -188,37 +195,55 @@
         let currentYear = new Date().getFullYear();
 
         const MS_PER_DAY = 1000 * 60 * 60 * 24;
+/**
+ * Met à jour les noms des parents dans la légende et le sélecteur de départ.
+ */
+function updateNames() {
+    const nameA = document.getElementById('nameA').value || 'Parent A';
+    const nameB = document.getElementById('nameB').value || 'Parent B';
+    
+    // Mettre à jour la légende
+    document.getElementById('legend-name-a').textContent = `${nameA} (semaine 1)`;
+    document.getElementById('legend-name-b').textContent = `${nameB} (semaine 2)`;
 
+    // Mettre à jour le sélecteur du parent qui commence
+    const startParentSelect = document.getElementById('startParent');
+    startParentSelect.options[0].textContent = nameA;
+    startParentSelect.options[1].textContent = nameB;
+
+    // Rafraîchir le calendrier pour mettre à jour les bulles d'aide
+    renderCalendar();
+}
         /**
-         * Détermine à quel parent appartient la date donnée, en se basant sur la date de référence.
-         * Le cycle est une alternance de 14 jours (une semaine Parent A, une semaine Parent B).
-         * @param {Date} date - La date à vérifier.
-         * @param {Date} refDate - La date de référence pour le début du cycle (doit être un LUNDI).
-         * @param {string} startParentClass - La classe ('parent-a' ou 'parent-b') du parent qui commence à refDate.
-         * @returns {string} La classe CSS ('parent-a' ou 'parent-b').
-         */
-        function getParent(date, refDate, startParentClass) {
-            // Calculer la différence en millisecondes, puis en jours
-            const diffDays = Math.floor((date.getTime() - refDate.getTime()) / MS_PER_DAY);
-            
-            // Calculer la position dans le cycle de 14 jours (Modulo 14)
-            let dayInCycle = diffDays % 14; 
-            
-            // Assurer que le résultat est positif pour les dates antérieures à REF_DATE
-            if (dayInCycle < 0) {
-                dayInCycle += 14;
-            }
+ * Détermine à quel parent appartient la date donnée et son nom.
+ * @returns {{class: string, name: string}} La classe CSS et le nom du parent.
+ */
+function getParent(date, refDate, startParentClass) {
+    const nameA = document.getElementById('nameA').value || 'Parent A';
+    const nameB = document.getElementById('nameB').value || 'Parent B';
 
-            // Déterminer la classe de base (Parent A = jours 0 à 6, Parent B = jours 7 à 13)
-            let baseClass = (dayInCycle >= 0 && dayInCycle <= 6) ? 'parent-a' : 'parent-b';
+    // ... (Le calcul du jour dans le cycle reste le même) ...
+    const diffDays = Math.floor((date.getTime() - refDate.getTime()) / MS_PER_DAY);
+    let dayInCycle = diffDays % 14; 
+    if (dayInCycle < 0) {
+        dayInCycle += 14;
+    }
 
-            // Si le parent qui commence est 'parent-b', il faut inverser les classes
-            if (startParentClass === 'parent-b') {
-                return baseClass === 'parent-a' ? 'parent-b' : 'parent-a';
-            }
+    let baseClass = (dayInCycle >= 0 && dayInCycle <= 6) ? 
+        { class: 'parent-a', name: nameA } : 
+        { class: 'parent-b', name: nameB };
 
-            return baseClass;
+    // Inversion si le parent B commence
+    if (startParentClass === 'parent-b') {
+        if (baseClass.class === 'parent-a') {
+            return { class: 'parent-b', name: nameB };
+        } else {
+            return { class: 'parent-a', name: nameA };
         }
+    }
+
+    return baseClass;
+}
 
         /**
          * Génère et affiche le calendrier pour le mois et l'année courants.
@@ -280,8 +305,12 @@
                         cell.textContent = date;
                         
                         // --- APPLICATION DE LA LOGIQUE DE GARDE ALTERNÉE ---
-                        const parentClass = getParent(currentDate, refDate, startParentClass);
-                        cell.classList.add(parentClass);
+                        // Nouvelle logique
+const parentInfo = getParent(currentDate, refDate, startParentClass);
+
+cell.classList.add(parentInfo.class);
+// Ajout du nom comme bulle d'aide (tooltip)
+cell.setAttribute('title', parentInfo.name);
                         // --------------------------------------------------
                         
                         date++;
@@ -323,12 +352,15 @@
          * Initialise le calendrier au chargement de la page.
          */
         function initCalendar() {
-            // S'assurer que currentMonth/currentYear correspond à la date actuelle au premier chargement
-            const today = new Date();
-            currentMonth = today.getMonth();
-            currentYear = today.getFullYear();
-            renderCalendar();
-        }
+    // 1. Initialiser l'affichage des noms
+    updateNames(); 
+    
+    // 2. Initialiser le calendrier
+    const today = new Date();
+    currentMonth = today.getMonth();
+    currentYear = today.getFullYear();
+    renderCalendar();
+}
 
         // Démarrer le calendrier
         initCalendar();
