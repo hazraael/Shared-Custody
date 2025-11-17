@@ -480,67 +480,132 @@
         }
         
         /**
- * Détermine à quel parent appartient la date donnée, en tenant compte des vacances.
- * Correction: Assure que le cycle standard reprend avec le parent qui n'a PAS eu la dernière garde de vacances.
+ * Détermine à quel parent appartient la date donnée, en tenant compte des vacances
+ * et en compensant les semaines incomplètes.
  */
 function getParent(date, refDate, startParentClass) {
-    const nameA = document.getElementById('nameA').value || 'Parent A';
-    const nameB = document.getElementById('nameB').value || 'Parent B';
-
+    // 1. Priorité absolue aux vacances
     const holidayOverride = getHolidayOverride(date);
     if (holidayOverride) {
-        return holidayOverride; // Priorité absolue aux vacances
+        return holidayOverride;
     }
 
-    // --- LOGIQUE DE REPRISE DU CYCLE STANDARD APRÈS VACANCES ---
+    // 2. Récupérer les paramètres du cycle
+    const weeksA = parseInt(document.getElementById('weeksA').value) || 1;
+    const weeksB = parseInt(document.getElementById('weeksB').value) || 1;
+    const daysA = weeksA * 7;
+    const cycleLengthDays = daysA + (weeksB * 7);
 
-    // 1. Trouver la dernière fin de vacances avant la date actuelle
-    const dateOnly = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-    const dateTimestamp = dateOnly.getTime();
+    // --- LOGIQUE DE COMPENSATION ---
 
+    const dateTimestamp = new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
+
+    let actualRefDate = new Date(refDate.getTime());
+    let actualStartParentClass = startParentClass;
+
+    // Trouver la dernière fin de vacances avant la date actuelle
     let lastHolidayEndInfo = null;
     let maxEndTimestamp = -1;
 
     for (const h of holidays) {
-        // La fin des vacances doit être antérieure ou égale à la date actuelle
+        // La fin des vacances doit être antérieure à la date actuelle
         if (h.end.getTime() < dateTimestamp && h.end.getTime() > maxEndTimestamp) {
             lastHolidayEndInfo = h;
             maxEndTimestamp = h.end.getTime();
         }
     }
-
-    let actualRefDate = new Date(refDate.getTime());
-    let actualStartParentClass = startParentClass;
-
+    
+    // Si nous trouvons une période de vacances passée
     if (lastHolidayEndInfo) {
-        // Si une période de vacances est trouvée juste avant :
         
-        // Date de début du cycle de reprise : le jour suivant la fin des vacances
+        // Date de reprise: le jour suivant la fin des vacances
         const restartDate = new Date(lastHolidayEndInfo.end.getTime() + MS_PER_DAY);
         
-        // Parent qui a eu la dernière garde des vacances (seconde moitié)
-        const lastHolidayParentClass = (lastHolidayEndInfo.firstHalfParent === 'parent-a' ? 'parent-b' : 'parent-a');
+        // --- 2. Détermination de la compensation ---
         
-        // Le cycle doit OBLIGATOIREMENT reprendre avec le parent INVERSE
-        actualStartParentClass = (lastHolidayParentClass === 'parent-a' ? 'parent-b' : 'parent-a');
-        actualRefDate = restartDate;
+        // Le jour avant le début des vacances (le point d'interruption)
+        const dayBeforeHoliday = new Date(lastHolidayEndInfo.start.getTime() - MS_PER_DAY);
         
-        // Décalage pour garantir que le parent inversé commence bien le cycle de N semaines.
-        // On modifie ici la "Date de Référence" et le "Parent de Référence"
+        // Quel était le statut du cycle standard le jour avant l'interruption ?
+        const infoBeforeHoliday = getStandardCycleParent(dayBeforeHoliday, refDate, startParentClass);
+        const parentBeforeHoliday = infoBeforeHoliday.class; // parent-a ou parent-b
         
-        // Le parent actuel (selon le cycle initial)
-        const standardInfo = getStandardCycleParent(date, refDate, startParentClass);
+        // Nombre total de jours du cycle que le parent interrompu devait avoir
+        const parentCycleDays = (parentBeforeHoliday === 'parent-a') ? daysA : (weeksB * 7);
+        
+        // Nombre de jours que ce parent a déjà eu avant l'interruption :
+        // On se base sur le cycle initial.
+        const diffDaysToRef = Math.floor((dayBeforeHoliday.getTime() - refDate.getTime()) / MS_PER_DAY);
+        let dayInCycle = diffDaysToRef % cycleLengthDays;
+        if (dayInCycle < 0) dayInCycle += cycleLengthDays;
 
-        // Si la date actuelle est après la reprise, on applique la nouvelle référence
-        // On n'a pas besoin de calculer le cycle précédent, il suffit de "remplacer"
-        // la référence initiale par la date et le parent de reprise.
-        
-        return getStandardCycleParent(date, actualRefDate, actualStartParentClass);
+        // Si le Parent A est le parent interrompu (standard A = jours 0 à daysA-1)
+        if (parentBeforeHoliday === 'parent-a') {
+            // Le jour de l'interruption (diffDaysToRef) est dans le cycle de A.
+            // On calcule combien de jours il reste au Parent A dans son cycle de daysA jours.
+            
+            let parentStartDayInCycle = 0;
+            if (actualStartParentClass === 'parent-b') {
+                parentStartDayInCycle = daysA;
+            }
+            
+            // Si le cycle a été inversé par startParentClass
+            let dayInParentCycle;
+            if (startParentClass === 'parent-a') {
+                 dayInParentCycle = dayInCycle; // Si dans la période A (0 à daysA-1)
+            } else {
+                 dayInParentCycle = dayInCycle - daysA; // Si dans la période B (daysA à cycleLengthDays-1)
+            }
+            
+            // Récupérer le jour par rapport au début du cycle du parent (0-based)
+            if (dayInCycle >= 0 && dayInCycle < daysA) {
+                // Parent A standard
+                dayInParentCycle = dayInCycle;
+            } else {
+                // Parent B standard
+                 dayInParentCycle = dayInCycle - daysA;
+            }
+
+            // On compense si le cycle a été interrompu DANS la période d'un parent (jour < jours total)
+            const daysRemaining = parentCycleDays - (dayInParentCycle + 1); // +1 car 0-based
+
+            if (daysRemaining > 0) {
+                // Le parent interrompu doit reprendre pour récupérer les jours manqués.
+                // On reprend avec le parent qui avait la garde avant les vacances,
+                // mais on décale le point de départ du cycle standard.
+                
+                // Calculer le décalage pour que la REPRISE standard commence le cycle du parent
+                // qui a été interrompu et lui laisse le temps de finir sa période.
+                
+                // La nouvelle date de référence doit être la date de reprise,
+                // et le parent qui commence le cycle à cette date est le parent interrompu.
+                
+                actualRefDate = restartDate;
+                actualStartParentClass = parentBeforeHoliday;
+
+            } else {
+                // Si daysRemaining est <= 0, le parent interrompu a terminé sa période
+                // le jour avant les vacances, ou aurait dû la finir.
+                // Le cycle doit donc reprendre avec le parent INVERSE
+                
+                const lastHolidayParentClass = (lastHolidayEndInfo.firstHalfParent === 'parent-a' ? 'parent-b' : 'parent-a');
+
+                actualRefDate = restartDate;
+                actualStartParentClass = (lastHolidayParentClass === 'parent-a' ? 'parent-b' : 'parent-a');
+            }
+        }
     }
+
+    // 3. Calculer la garde standard avec la référence potentiellement décalée
     
-    // Si aucune vacances n'a eu lieu avant ou si la date est dans le cycle initial
-    return getStandardCycleParent(date, refDate, startParentClass);
+    // Si un décalage a été calculé, on le réutilise pour le calcul standard.
+    // Sinon, on utilise la référence initiale.
+    return getStandardCycleParent(date, actualRefDate, actualStartParentClass);
 }
+
+// NOTE: La fonction getStandardCycleParent est supposée être la même que précédemment,
+// elle calcule le parent en fonction d'une date de référence (lundi) et d'un parent de départ.
+// Il n'est pas nécessaire de la modifier.
         
         // --- GESTION DES VACANCES ---
 
