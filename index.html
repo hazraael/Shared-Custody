@@ -73,18 +73,30 @@
             gap: 15px;
             margin-top: 15px;
         }
+        /* Configuration des vacances (Mise à jour pour un alignement propre) */
         .holiday-input-group {
             display: flex;
+            align-items: flex-end; /* Alignez tout au bas des champs (pour le bouton) */
             gap: 10px;
-            align-items: flex-end;
             margin-top: 10px;
             padding-bottom: 10px;
             border-bottom: 1px dashed #ccc;
         }
-        .holiday-input-group > div {
+        
+        /* Nouveau style pour les champs individuels */
+        .holiday-input-group .input-item {
             display: flex;
             flex-direction: column;
             flex-grow: 1;
+        }
+
+        /* Ajustement du bouton pour qu'il s'aligne avec les autres champs */
+        .holiday-input-group .add-button {
+            padding: 8px 15px;
+            height: 35px; /* Ajuster la hauteur pour qu'elle corresponde aux inputs */
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
         .school-year-config {
             display: flex;
@@ -303,22 +315,22 @@
             <div class="config-header" id="holiday-config">
                 <h3>Remplacement des Périodes de Vacances (50/50)</h3>
                 <div class="holiday-input-group">
-                    <div>
+                    <div class="input-item">
                         <label for="holiday-start">Début (inclus) :</label>
                         <input type="date" id="holiday-start">
                     </div>
-                    <div>
+                    <div class="input-item">
                         <label for="holiday-end">Fin (inclus) :</label>
                         <input type="date" id="holiday-end">
                     </div>
-                    <div>
+                    <div class="input-item">
                         <label for="holiday-parent">Garde 1ère moitié :</label>
                         <select id="holiday-parent">
                             <option value="parent-a">Parent A</option>
                             <option value="parent-b">Parent B</option>
                         </select>
                     </div>
-                    <button onclick="addHoliday()" style="background-color: #2ecc71; color: white;">Ajouter</button>
+                    <button onclick="addHoliday()" class="add-button" style="background-color: #2ecc71; color: white;">Ajouter</button>
                 </div>
                 
                 <div id="holiday-list">
@@ -467,13 +479,68 @@
             return null;
         }
         
-        function getParent(date, refDate, startParentClass) {
-            const holidayOverride = getHolidayOverride(date);
-            if (holidayOverride) {
-                return holidayOverride;
-            }
-            return getStandardCycleParent(date, refDate, startParentClass);
+        /**
+ * Détermine à quel parent appartient la date donnée, en tenant compte des vacances.
+ * Correction: Assure que le cycle standard reprend avec le parent qui n'a PAS eu la dernière garde de vacances.
+ */
+function getParent(date, refDate, startParentClass) {
+    const nameA = document.getElementById('nameA').value || 'Parent A';
+    const nameB = document.getElementById('nameB').value || 'Parent B';
+
+    const holidayOverride = getHolidayOverride(date);
+    if (holidayOverride) {
+        return holidayOverride; // Priorité absolue aux vacances
+    }
+
+    // --- LOGIQUE DE REPRISE DU CYCLE STANDARD APRÈS VACANCES ---
+
+    // 1. Trouver la dernière fin de vacances avant la date actuelle
+    const dateOnly = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+    const dateTimestamp = dateOnly.getTime();
+
+    let lastHolidayEndInfo = null;
+    let maxEndTimestamp = -1;
+
+    for (const h of holidays) {
+        // La fin des vacances doit être antérieure ou égale à la date actuelle
+        if (h.end.getTime() < dateTimestamp && h.end.getTime() > maxEndTimestamp) {
+            lastHolidayEndInfo = h;
+            maxEndTimestamp = h.end.getTime();
         }
+    }
+
+    let actualRefDate = new Date(refDate.getTime());
+    let actualStartParentClass = startParentClass;
+
+    if (lastHolidayEndInfo) {
+        // Si une période de vacances est trouvée juste avant :
+        
+        // Date de début du cycle de reprise : le jour suivant la fin des vacances
+        const restartDate = new Date(lastHolidayEndInfo.end.getTime() + MS_PER_DAY);
+        
+        // Parent qui a eu la dernière garde des vacances (seconde moitié)
+        const lastHolidayParentClass = (lastHolidayEndInfo.firstHalfParent === 'parent-a' ? 'parent-b' : 'parent-a');
+        
+        // Le cycle doit OBLIGATOIREMENT reprendre avec le parent INVERSE
+        actualStartParentClass = (lastHolidayParentClass === 'parent-a' ? 'parent-b' : 'parent-a');
+        actualRefDate = restartDate;
+        
+        // Décalage pour garantir que le parent inversé commence bien le cycle de N semaines.
+        // On modifie ici la "Date de Référence" et le "Parent de Référence"
+        
+        // Le parent actuel (selon le cycle initial)
+        const standardInfo = getStandardCycleParent(date, refDate, startParentClass);
+
+        // Si la date actuelle est après la reprise, on applique la nouvelle référence
+        // On n'a pas besoin de calculer le cycle précédent, il suffit de "remplacer"
+        // la référence initiale par la date et le parent de reprise.
+        
+        return getStandardCycleParent(date, actualRefDate, actualStartParentClass);
+    }
+    
+    // Si aucune vacances n'a eu lieu avant ou si la date est dans le cycle initial
+    return getStandardCycleParent(date, refDate, startParentClass);
+}
         
         // --- GESTION DES VACANCES ---
 
